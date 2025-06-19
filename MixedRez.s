@@ -78,6 +78,11 @@ super_main
 .loop_forever
 	bra.s	.loop_forever		; infinite wait loop
 exit                            ; We actual come back here from anywhere, including IRQs
+  ifne enable_music
+	jsr Music+4                 ; Stop music
+	jsr YmSilent
+  endc
+
 	move.w #$2700,sr            ; We just don't care, just restore the stack pointer and we are all good
 	move.l usp,sp				; Restore the stack pointer
 	bsr RestoreSettings
@@ -86,39 +91,37 @@ exit                            ; We actual come back here from anywhere, includ
 
 SaveSettings
 	lea settings,a0
-	move.l	$ffff8200.w,(a0)+
-	move.b	$ffff820a.w,(a0)+
-	move.b	$ffff8260.w,(a0)+
-	move.l	$68.w,(a0)+
-	move.l	$70.w,(a0)+
-	move.l	$120.w,(a0)+
-	move.l	$134.w,(a0)+
-	move.b	$fffffa07.w,(a0)+
-	move.b	$fffffa09.w,(a0)+
-	movem.l $ffff8240.w,d1-d7/a1
-	movem.l d1-d7/a1,(a0)
+	movem.l $ffff8240.w,d1-d7/a1 
+	movem.l d1-d7/a1,(a0)       ; palette
+	lea 32(a0),a0
+	move.l	$68.w,(a0)+         ; hbl
+	move.l	$70.w,(a0)+         ; vbl
+	move.l	$120.w,(a0)+        ; timer B
+	move.l	$134.w,(a0)+        ; timer A
+	move.l	$ffff8200.w,(a0)+   ; screen
+	move.b	$ffff820a.w,(a0)+   ; freq
+	move.b	$ffff8260.w,(a0)+   ; rez
+	move.b	$fffffa07.w,(a0)+   ; iera
+	move.b	$fffffa09.w,(a0)+   ; ierb
+	move.b	$fffffa19.w,(a0)+   ; tacr
+	move.b	$fffffa1b.w,(a0)+   ; tbcr
 	rts
 
 RestoreSettings
 	lea settings,a0
-	move.l	(a0)+,$ffff8200.w
-	move.b	(a0)+,$ffff820a.w
-	move.b	(a0)+,$ffff8260.w
-	move.l	(a0)+,$68.w
-	move.l	(a0)+,$70.w
-	move.l	(a0)+,$120.w
-	move.l	(a0)+,$134.w
-	move.b	(a0)+,$fffffa07.w
-	move.b	(a0)+,$fffffa09.w
-	movem.l (a0)+,d1-d7/a1
+	movem.l (a0)+,d1-d7/a1      ; palette
 	movem.l d1-d7/a1,$ffff8240.w
-	clr.b	$fffffa19.w
-	clr.b	$ffff820a.w
-
-  ifne enable_music
-	jsr Music+4             ; Stop music
-	jsr YmSilent
-  endc
+	move.l	(a0)+,$68.w         ; hbl
+	move.l	(a0)+,$70.w         ; vbl
+	move.l	(a0)+,$120.w        ; timer B
+	move.l	(a0)+,$134.w        ; timer A
+	move.l	(a0)+,$ffff8200.w   ; screen
+	move.b	(a0)+,$ffff820a.w   ; freq   
+	move.b	(a0)+,$ffff8260.w   ; rez
+	move.b	(a0)+,$fffffa07.w   ; iera
+	move.b	(a0)+,$fffffa09.w   ; ierb
+	move.b	(a0)+,$fffffa19.w   ; tacr
+	move.b	(a0)+,$fffffa1b.w   ; tbcr
 	rts
 
 
