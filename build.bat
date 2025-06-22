@@ -11,6 +11,11 @@ echo %ESC%[1mBuild started: %date% %time%%ESC%[0m
 
 md export
 bin\PictConv.exe -m1 -f1 -o7 data\sommarhack_multipalette.png export\sommarhack_multipalette.bin
+bin\PictConv.exe -m1 -f1 -o7 data\oxygen.png export\oxygen_multipalette.bin
+bin\PictConv.exe -m1 -f1 -o7 data\peace.png export\peace_multipalette.bin
+bin\PictConv.exe -m1 -f1 -o7 data\nuclear.png export\nuclear_multipalette.bin
+bin\PictConv.exe -m1 -f1 -o7 data\tribunal.png export\tribunal_multipalette.bin
+::bin\PictConv.exe -m1 -f1 -o7 data\meme.png export\sommarhack_multipalette.bin
 
 ::
 :: http://sun.hasenbraten.de/vasm/index.php?view=tutorial
