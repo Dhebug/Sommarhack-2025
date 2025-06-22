@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "floppy_description.h": "c"
+    },
+    "cmake.configureOnOpen": false,
+    "workbench.colorCustomizations": {
+        "activityBar.background": "#17340C",
+        "titleBar.activeBackground": "#204911",
+        "titleBar.activeForeground": "#F7FDF4"
+    }
+}

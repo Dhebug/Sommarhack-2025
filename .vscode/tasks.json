@@ -12,6 +12,12 @@
             "group": {
                 "kind": "build",
                 "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true,          // Should the terminal content be cleared when starting the task
+                "close": false          // Should the terminal be closed after building?
             }
         }
     ]
