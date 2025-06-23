@@ -55,6 +55,7 @@ dbra_time_loop  	equ 3
 ;% prenant plus de temps machine avec la mˆme taille	       %
 ;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+ ifne 0
 pause macro
 t6 set (\1)/6
 t5 set (\1-t6*6)/5
@@ -69,7 +70,29 @@ t1 set (\1-t6*6-t5*5-t4*4-t3*3-t2*2)
 	dcb.w t2,$8080  ; or.l d0,d0         2
 	dcb.w t1,$4e71  ; nop                1
 	endm
-   
+   endc
+
+pause macro		; Fast mode 
+delay set \1
+ ifne delay<9
+t4 set (delay)/5
+t3 set (delay-t4*5)/3
+t2 set (delay-t4*5-t3*3)/2
+t1 set (delay-t4*5-t3*3-t2*2)
+  dcb.w t4,$2e97  ; move.l (a7),(a7)  20/5
+  dcb.w t3,$1e97  ; move.b (a7),(a7)  12/3
+  dcb.w t2,$8080  ; move.b d0,d0       8/2 (or.l d0,d0)
+  dcb.w t1,$4e71  ; nop                4/1
+ else 
+  ifne delay>100
+   fail delay
+  else
+   jsr EndNopTable-2*(delay-9)
+  endc
+ endc
+ endm
+
+
 
  SECTION TEXT
   
@@ -86,6 +109,20 @@ ProgStart
 
 	clr.w -(sp)               ; GEMDOS: PTERM(0)
 	trap #1
+
+
+; jsr abs.l => 20/5 cycles 
+; jsr EndNopTable + rts = 5+4=9 nops
+NopTable
+ 	dcb.w 100,$4e71		; 4/1   x100
+EndNopTable 
+	rts					; 16/4
+
+DummyHbl
+	rte
+
+DoNothing
+	rts
 
 SuperMain
 	move.l sp,usp               ; Save the stack pointer
@@ -119,6 +156,7 @@ SaveSettings
 	move.l	$ffff8200.w,(a0)+   ; screen
 	move.b	$ffff820a.w,(a0)+   ; freq
 	move.b	$ffff8260.w,(a0)+   ; rez
+	move.b	$ffff8265.w,(a0)+   ; horizontal scroll
 	move.b	$fffffa07.w,(a0)+   ; iera
 	move.b	$fffffa09.w,(a0)+   ; ierb
 	move.b	$fffffa19.w,(a0)+   ; tacr
@@ -137,6 +175,7 @@ RestoreSettings
 	move.l	(a0)+,$ffff8200.w   ; screen
 	move.b	(a0)+,$ffff820a.w   ; freq   
 	move.b	(a0)+,$ffff8260.w   ; rez
+	move.b	(a0)+,$ffff8265.w   ; horizontal scroll
 	move.b	(a0)+,$fffffa07.w   ; iera
 	move.b	(a0)+,$fffffa09.w   ; ierb
 	move.b	(a0)+,$fffffa19.w   ; tacr
@@ -164,10 +203,15 @@ Initialization
 	movep.w d0,0(a0) 
 	sf.b 12(a0)					        ; For STE low byte to 0
 
+	; Set the palette to black
+	movem.l	black_palette,d0-d7
+	movem.l	d0-d7,$ffff8240.w
+
 	; Set the current image
 	move.l #sommarhack_multipalette,CurrentImage
+	jsr fullscr_ste_copy_pic
 
-	; Initialize the music	
+	; Initialize the music	 
  ifne enable_music
 	moveq #1,d0             ; Subtune number
 	jsr Music+0             ; Init music
@@ -192,11 +236,26 @@ Initialization
 	rts
 
 
-DummyHbl
-	rte
+fullscr_ste_copy_pic:
+		;Copy picture to both workscreens
+	move.l #screen_buffer+256,d0
+	clr.b d0
+	move.l d0,a0
+	lea 160(a0),a0
 
-DoNothing
-	rts
+		lea	fullscr_ste_picture+32,a2
+
+		move.w	#273-1,d7
+.y:		move.w	#416/2/4-1,d6
+.x:
+		move.l	(a2)+,d0
+		move.l	d0,(a0)+
+
+		dbra	d6,.x
+		lea	224-208(a0),a0
+		dbra	d7,.y
+		rts
+
 
 ; MARK: VBL Handler
 VblHandler:
@@ -206,6 +265,17 @@ VblHandler:
 	move.b	#4,$fffffa19.w		; tacr: divider -> Starts the timer
 
 	movem.l d0-d7/a0-a6,-(sp)
+
+	; First palette change
+	;move.l CurrentImage,d0     ;Set screenaddress
+	;move.l #fullscr_ste_picture+32,d0
+	;lsr.l	#8,d0				;
+	;move.l	d0,$ffff8200.w			;
+
+	movem.l	fullscr_ste_picture,d0-d7	;Set palette
+	movem.l	d0-d7,$ffff8240.w		;
+
+	;move.w #$700,$ffff8240.w
 
 	; Keyboard handling
 	btst #0,$fffffc00.w
@@ -231,7 +301,7 @@ end_key
 	move.l CurrentImage,a5
 	lea $ffff8240.w,a6
 	REPT 8
-	move.l (a5)+,(a6)+
+	;move.l (a5)+,(a6)+
 	ENDR
 
  ifne enable_music
@@ -268,71 +338,101 @@ SetImage5
 
 
 ; MARK: Timer A
+
+	opt o-  
+
 TimerAHandler
-	opt o-
+	movem.l	d0-a6,-(sp)
 
-	pause 41
+	pause 9+4
 
-	move.w #$2100,sr			; Wait for the next hardware HBL
-	stop #$2100
-	move.w #$2700,sr			; Disable interrupts
-	clr.b $fffffa19.w			; stop timer a
+	; do_hardsync_top_border
+	move.w	#$2100,sr			;Enable HBL
+	stop	#$2100				;Wait for HBL
+	move.w	#$2700,sr			;Stop all interrupts
+	clr.b	$fffffa19.w			;Stop Timer A
 
-	movem.l d0-a6,-(sp)
-	pause 51  ;52-2-2-3-3-4+3+3+3+2+2
+	dcb.w 	84,$4e71			;Have fun for a bit
 
-	move.b	#0,$ffff820a.w		; remove top border
-	pause 9
-	move.b	#2,$ffff820a.w
+	move.b	#0,$ffff820a.w			;Remove the top border
+	dcb.w 	9,$4e71				;
+	move.b	#2,$ffff820a.w			;
+	move.w	#$2300,sr			;
 
-	; STE hardware compatible synchronization code
- 	move.b #0,$ffff8209.w
- 
-	; Wait for the screen start
-	move #$100,$ffff8240.w
-	moveq #16,d0
-.wait_sync
-	move.b $ffff8209.w,d1
-	beq.s .wait_sync
-	sub.b d1,d0
-	lsl.b d0,d1
+	lea	$ffff8209.w,a0			;Hardsync
+	moveq	#127,d1				;
+.sync:		
+	tst.b	(a0)				;
+	beq.s	.sync				;
+	move.b	(a0),d2				;
+	sub.b	d2,d1				;
+	lsr.l	d1,d1				;
 
-	pause 50
-	move.l CurrentImage,d0
-	add.l #6400,d0
-	lsl.l #8,d0
-    lea $ffff8205.w,a1    		; 8/2 frequence
-	movep.l d0,0(a1)		    ; (6) $ffff8205/07/09/0B
+	;inits
+	moveq #2,d7				;D7 used for the overscan code
+	pause 66+5
 
-	move #$222,$ffff8240.w
-
-	; Palette change test
-	move.l CurrentImage,a5
-	;lea 32(a5),a5
-	move.w #200-1,d7
-.loop_resol_change
-	lea $ffff8240.w,a6
-	REPT 8
-	move.l (a5)+,(a6)+
-	ENDR
-	move #alignment_marker,$ffff8240.w   ; Green horizontal band
-	pause 82-dbra_time_loop
-	dbra d7,.loop_resol_change
-
-	; Force the palette to black at the end
-	lea $ffff8240.w,a6
-	REPT 8
-	move.l #0,(a6)+
+	; --------------------------------------------------
+	; Code for scanlines 0-226 and 229-272
+	; --------------------------------------------------
+	REPT 227
+	move.b	d7,$ffff8260.w			;3 Left border
+	move.w	d7,$ffff8260.w			;3
+	pause 90
+	move.w	d7,$ffff820a.w			;3 Right border
+	move.b	d7,$ffff820a.w			;3
+	pause 26
 	ENDR
 
-	movem.l (sp)+,d0-a6
+	; --------------------------------------------------
+	; Code for scanline 227-228 (lower border special case)
+	; --------------------------------------------------
+	move.b	d7,$ffff8260.w			;3 Left border
+	move.w	d7,$ffff8260.w			;3
+	pause 90
+	move.w	d7,$ffff820a.w			;3 Right border
+	move.b	d7,$ffff820a.w			;3
+	pause 23
+	move.w	d7,$ffff820a.w			;3 left border
+	;-----------------------------------
+	move.b	d7,$ffff8260.w			;3 lower border
+	move.w	d7,$ffff8260.w			;3
+	move.b	d7,$ffff820a.w			;3
+	pause 87
+	move.w	d7,$ffff820a.w			;3 right border
+	move.b	d7,$ffff820a.w			;3
+	pause 26
+
+	; --------------------------------------------------
+	; Code for scanlines 229-272
+	; --------------------------------------------------
+	REPT 44
+	move.b	d7,$ffff8260.w			;3 Left border
+	move.w	d7,$ffff8260.w			;3
+	pause 90
+	move.w	d7,$ffff820a.w			;3 Right border
+	move.b	d7,$ffff820a.w			;3
+	pause 26
+	ENDR
+
+	move.w #$707,$ffff8240.w
+
+	; Overscan end
+	movem.l	(sp)+,d0-a6
+	move.w	#$2300,sr
 	rte
+
 
 	opt o+
 
 
 ; MARK: - DATA -
 	SECTION DATA
+
+; 56816 bytes: 32+56816 -> 208 bytes per scanline
+fullscr_ste_picture:
+	incbin "export\dhs_fullscreen.bin"  ; ;416x273 four bitplanes and 32 byte palette at the start
+	even
 
 ; 38400
 ; 32000+6400
@@ -350,6 +450,14 @@ nuclear_multipalette
 
 tribunal_multipalette
 	incbin "export\tribunal_multipalette.bin"
+
+medium_rez
+	incbin "export\atari_text_640x200.bin"
+
+; 649x69 = 160*60 = 11040
+; 11048 bytes
+sommarhack_logo
+	incbin "export\sommarhack_logo.bin"
 
 sine_255				; 16 bits, unsigned between 00 and 127
 	incbin "data\sine_255.bin"
@@ -372,6 +480,7 @@ bss_start:
 
 CurrentImage	ds.l 1
 
+black_palette	ds.w    16
 settings        ds.b    256
 screen_buffer	ds.b	160*276+256
 
