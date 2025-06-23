@@ -1,6 +1,6 @@
 misc/*.*
 final/*.*
 export/*.*
-*copy.*
+*copy*.*
 *.prg
 *.exe
