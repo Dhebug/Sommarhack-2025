@@ -450,23 +450,62 @@ TimerAHandler
 
 	;inits
 	moveq #2,d7				;D7 used for the overscan code
-	pause 66+5
+	pause 45-2-3-1-6-3-1-6-3
 
 	; --------------------------------------------------
 	; Code for scanlines 0-226 and 229-272
 	; --------------------------------------------------
+
+    lea $ffff8205.w,a6    			; 2 frequence
+
+	move.l #sommarhack_multipalette,a4	; 3
+
+	move.l #sommarhack_multipalette+6400,a0	; 3
+	move.l a0,d0					; 1
+	lsl.l #8,d0                     ; 6
+
+	move.l #medium_rez+8,a0			; 3
+	move.l a0,d1					; 1
+	lsl.l #8,d1                     ; 6
+
 	REPT 227
+    lea $ffff8240.w,a5    			; 2 palette
+	move.l (a4)+,(a5)+              ; 5
+	move.l (a4)+,(a5)+              ; 5
+
+	pause 26-6-4-4-2-5-5
+	move.b #0,$ffff8260.w   		; 4 Low resolution
+	movep.l d0,0(a6)		    	; 6 $ffff8205/07/09/0B
+	add.l #160<<8,d0                ; 4
+
 	move.b	d7,$ffff8260.w			;3 Left border
 	move.w	d7,$ffff8260.w			;3
-	pause 90
+
+	move.l (a4)+,(a5)+              ; 5
+	move.l (a4)+,(a5)+              ; 5
+	move.l (a4)+,(a5)+              ; 5
+	move.l (a4)+,(a5)+              ; 5
+	move.l (a4)+,(a5)+              ; 5
+	move.l (a4)+,(a5)+              ; 5
+
+	; +10 i stable but with bad color
+	pause 45-4-5-5-5-5-5-5+17
+
+	movep.l d1,0(a6)		    	; 6 $ffff8205/07/09/0B
+	nop
+	move.b #1,$ffff8260.w   		; 4 Medium resolution
+	add.l #160<<8,d1                ; 4
+
+	pause 45-1-6-4-17
 	move.w	d7,$ffff820a.w			;3 Right border
 	move.b	d7,$ffff820a.w			;3
-	pause 26
 	ENDR
 
 	; --------------------------------------------------
 	; Code for scanline 227-228 (lower border special case)
 	; --------------------------------------------------
+	REPT 1
+	pause 26
 	move.b	d7,$ffff8260.w			;3 Left border
 	move.w	d7,$ffff8260.w			;3
 	pause 90
@@ -481,18 +520,18 @@ TimerAHandler
 	pause 87
 	move.w	d7,$ffff820a.w			;3 right border
 	move.b	d7,$ffff820a.w			;3
-	pause 26
+	ENDR
 
 	; --------------------------------------------------
 	; Code for scanlines 229-272
 	; --------------------------------------------------
 	REPT 44
+	pause 26
 	move.b	d7,$ffff8260.w			;3 Left border
 	move.w	d7,$ffff8260.w			;3
 	pause 90
 	move.w	d7,$ffff820a.w			;3 Right border
 	move.b	d7,$ffff820a.w			;3
-	pause 26
 	ENDR
 
 	move.w #$707,$ffff8240.w
