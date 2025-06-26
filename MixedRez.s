@@ -111,6 +111,21 @@ ProgStart
 	trap #1
 
 
+;
+; This machine is not a STE/MSTE (Should check monochrome as well)
+;
+UnsupportedMachine
+	pea NotASteMessage
+	move #9,-(sp)
+	trap #1
+	addq #6,sp
+
+	; wait key
+	move #7,-(sp)
+	trap #1
+	addq #2,sp
+	rts
+
 ; jsr abs.l => 20/5 cycles 
 ; jsr EndNopTable + rts = 5+4=9 nops
 NopTable
@@ -126,6 +141,59 @@ DoNothing
 
 SuperMain
 	move.l sp,usp               ; Save the stack pointer
+
+	;
+	; This has to be done first, else we will lose data
+	; We need to start by clearing the BSS in case of some packer let some crap
+	;
+	lea bss_start,a0					
+	lea bss_end,a1 
+	moveq #0,d0
+.loop_clear_bss
+	move.l d0,(a0)+
+	cmp.l a1,a0
+	ble.s .loop_clear_bss
+
+	;
+	; We need to know on which machine we are running the intro.
+	; We accept STE and MegaSTE as valid machines.
+	; Anything else will have a nice message telling them to "upgrade" or use an emulator :)
+	;
+	move.l $5a0.w,d0
+	beq UnsupportedMachine		; No cookie, this is definitely not a STe or MegaSTe
+
+	sf machine_is_ste
+	sf machine_is_megaste
+
+	move.l	d0,a0
+.loop_cookie	
+	move.l (a0)+,d0			; Cookie descriptor
+	beq UnsupportedMachine
+	move.l (a0)+,d1			; Cookie value
+	
+	cmp.l #"CT60",d0
+	beq UnsupportedMachine	; We do not run on Falcon, accelerated or not
+	cmp.l #"_MCH",d0
+	bne.s .loop_cookie
+	
+.found_machine	
+	cmp.l #$00010010,d1
+	beq.s .found_mste
+	sf.b d1
+	cmp.l #$00010000,d1
+	beq.s .found_ste
+	bra UnsupportedMachine	; We do not run on TT
+
+.found_mste
+	st machine_is_megaste 
+.found_ste 
+	st machine_is_ste
+	
+	move.b $ffff8260.w,d0
+	and.b #2,d0
+	bne UnsupportedMachine      ; We cannot run in high resolution
+			
+	; Proper start			
 	move.w #$2700,sr
 	bsr SaveSettings
 	bsr Initialization
@@ -161,6 +229,13 @@ SaveSettings
 	move.b	$fffffa09.w,(a0)+   ; ierb
 	move.b	$fffffa19.w,(a0)+   ; tacr
 	move.b	$fffffa1b.w,(a0)+   ; tbcr
+
+	tst.b machine_is_megaste
+	beq.s .end_megaste
+	move.b $ffff8e21.w,(a0)+ 	; On mste we need to save the cache value and force to 8mhz
+	move.b #%00,$ffff8e21.w	    ; 8mhz without cache
+.end_megaste
+
 	rts
 
 
@@ -180,6 +255,11 @@ RestoreSettings
 	move.b	(a0)+,$fffffa09.w   ; ierb
 	move.b	(a0)+,$fffffa19.w   ; tacr
 	move.b	(a0)+,$fffffa1b.w   ; tbcr
+
+	tst.b machine_is_megaste
+	beq.s .end_megaste
+	move.b (a0)+,$ffff8e21.w	; Restore mste frequency and cache status
+.end_megaste
 	rts
 
 
@@ -469,6 +549,9 @@ sine_255				; 16 bits, unsigned between 00 and 127
 Music
 	incbin "data\SOS.SND"
 
+NotASteMessage
+ 	dc.b 27,"E","This demo works only on STE or MegaSTE,",10,13,"with a color screen",0
+
 	even
 
 ; MARK: - BSS -
@@ -476,18 +559,24 @@ Music
 
 	even
 
-bss_start:
+bss_start
 
 CurrentImage	ds.l 1
 
-black_palette	ds.w    16
-settings        ds.b    256
+black_palette			ds.w 16
+settings        		ds.b 256
+machine_is_ste			ds.b 1 		; We only run on STe type machines
+machine_is_megaste 		ds.b 1 		; MegaSTe is possibly supported, with Blitter timing fixes
+
+	even
+
 screen_buffer	ds.b	160*276+256
 
 
 	even
 
 
+bss_end       	ds.l 1 						; One final long so we can clear stuff without checking for overflows
 
 	end
 
