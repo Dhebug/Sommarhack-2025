@@ -20,6 +20,8 @@
 ; Useful tool: http://tool.anides.de
 ;
 ; https://temlib.org/AtariForumWiki/index.php/Atari_ST/STe/MSTe/TT/F030_Hardware_Register_Listing
+; https://beyondbrown.mooo.com/post/hardware-register-listing-8.6/
+;
 ; $FF8201|byte |Video screen memory position (High byte)             |R/W
 ; $FF8203|byte |Video screen memory position (Mid byte)              |R/W
 ; $FF820D|byte |Video screen memory position (Low byte)              |R/W  (STe)
@@ -27,7 +29,10 @@
 ; $FF8205|byte |Video address pointer (High byte)                    |R (R/W STe)
 ; $FF8207|byte |Video address pointer (Mid byte)                     |R (R/W STe)
 ; $FF8209|byte |Video address pointer (Low byte)                     |R (R/W STe)
+; $FF820A|byte |Video synchronization mode                    BIT 1 0|R/W
 ; $FF820B|byte 
+; $FF8264|byte |Horizontal scroll register without prefetch (0-15)   |R/W  (STe)
+; $FF8265|byte |Horizontal scroll register with prefetch (0-15)      |R/W  (STe)
 
 enable_music  		equ 0
 
