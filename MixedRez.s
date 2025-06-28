@@ -292,9 +292,11 @@ Initialization
 	movem.l	black_palette,d0-d7
 	movem.l	d0-d7,$ffff8240.w
 
+	; And force the display list to point to nothing
+	jsr InitializeEmptyDisplayList
+
 	; Set the current image
 	move.l #sommarhack_multipalette,CurrentImage
-	jsr GenerateDisplayList
 
 	; Initialize the music	 
  ifne enable_music
@@ -321,10 +323,25 @@ Initialization
 	rts
 
 
+InitializeEmptyDisplayList
+	lea black_palette,a0 		; Black palette
+	move.l #blank_scanline,d0	; Blank scanline
+	lsl.l #8,d0               	; Shifted for movep
+
+	lea DisplayList,a6        ; Target
+
+	move.w #276-1,d7
+.loop
+	move.l d0,(a6)+       ; Line address (4) + pixel shift (1->2)
+	move.l a0,(a6)+       ; Palette pointer (4)
+	dbra d7,.loop	
+	rts
+
+
 ; Various types of contents in a Display List:
 ; - Line adress (4) + pixel shift (1->2)
 ; - Palette pointer (4)
-GenerateDisplayList
+UpdateDisplayList
 	lea oxygen_multipalette,a0 ; Palette
 	;lea sommarhack_multipalette,a0
 	move.l a0,d0
@@ -338,7 +355,7 @@ GenerateDisplayList
 	add.w #2,sine_offset
 	and.w #511,sine_offset
 
-	move.w #276-1,d7
+	move.w #200-1,d7
 .loop
 	move.l d0,d1
 	moveq #0,d6
@@ -566,7 +583,7 @@ TimerAHandler
 
 	move.w #$707,$ffff8240.w
 
-	jsr GenerateDisplayList
+	jsr UpdateDisplayList
 	move.w #$007,$ffff8240.w
 
 	; Overscan end
@@ -635,7 +652,9 @@ bss_start
 
 CurrentImage	ds.l 1
 
-black_palette			ds.w 16
+black_palette			ds.w 16     ; These two should stay black
+blank_scanline          ds.w 224    ; Probably more like 224 bytes, but does not care
+
 settings        		ds.b 256
 machine_is_ste			ds.b 1 		; We only run on STe type machines
 machine_is_megaste 		ds.b 1 		; MegaSTe is possibly supported, with Blitter timing fixes
