@@ -81,7 +81,7 @@ t2 set (delay-t4*5-t3*3)/2
 t1 set (delay-t4*5-t3*3-t2*2)
   dcb.w t4,$2e97  ; move.l (a7),(a7)  20/5
   dcb.w t3,$1e97  ; move.b (a7),(a7)  12/3
-  dcb.w t2,$8080  ; move.b d0,d0       8/2 (or.l d0,d0)
+  dcb.w t2,$8080  ; or.l d0,d0         8/2
   dcb.w t1,$4e71  ; nop                4/1
  else 
   ifne delay>100
@@ -289,7 +289,7 @@ Initialization
 
 	; Set the current image
 	move.l #sommarhack_multipalette,CurrentImage
-	jsr fullscr_ste_copy_pic
+	jsr GenerateDisplayList
 
 	; Initialize the music	 
  ifne enable_music
@@ -450,31 +450,32 @@ TimerAHandler
 	lsr.l	d1,d1				;
 
 	;inits
-	moveq #2,d7				;D7 used for the overscan code
-	pause 45-2-3-1-6-3-1-6-3
-
-	; --------------------------------------------------
-	; Code for scanlines 0-226 and 229-272
-	; --------------------------------------------------
+	
+	dcb.w 24,$4e71
+  
 
     lea $ffff8205.w,a6    			; 2 frequence
 
-	move.l #sommarhack_multipalette,a4	; 3
-
-	move.l #sommarhack_multipalette+6400,a0	; 3
-	move.l a0,d0					; 1
-	lsl.l #8,d0                     ; 6
+	
+	lea DisplayList,a3              ; 3
+	move.l (a3)+,d0                 ; 3 Screen value
+	move.l (a3)+,a4                 ; 3 Palette
 
 	move.l #medium_rez+8,a0			; 3
 	move.l a0,d1					; 1
 	lsl.l #8,d1                     ; 6
 
+	moveq #2,d7				;D7 used for the overscan code
+
+	; --------------------------------------------------
+	; Code for scanlines 0-226 and 229-272
+	; --------------------------------------------------
 	REPT 227
     lea $ffff8240.w,a5    			; 2 palette
 	move.l (a4)+,(a5)+              ; 5
 	move.l (a4)+,(a5)+              ; 5
 
-	pause 26-6-4-4-2-5-5
+	pause 0
 	move.b #0,$ffff8260.w   		; 4 Low resolution
 	movep.l d0,0(a6)		    	; 6 $ffff8205/07/09/0B
 	add.l #160<<8,d0                ; 4
@@ -489,15 +490,14 @@ TimerAHandler
 	move.l (a4)+,(a5)+              ; 5
 	move.l (a4)+,(a5)+              ; 5
 
-	; +10 i stable but with bad color
-	pause 45-4-5-5-5-5-5-5+17
+	pause 28
 
 	movep.l d1,0(a6)		    	; 6 $ffff8205/07/09/0B
 	nop
 	move.b #1,$ffff8260.w   		; 4 Medium resolution
 	add.l #160<<8,d1                ; 4
 
-	pause 45-1-6-4-17
+	pause 17
 	move.w	d7,$ffff820a.w			;3 Right border
 	move.b	d7,$ffff820a.w			;3
 	ENDR
