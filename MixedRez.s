@@ -547,14 +547,13 @@ TimerAHandler
 	move.l (a4)+,(a5)+              ; 5
 	move.l (a4)+,(a5)+              ; 5
 
-	pause 0
 	move.b #0,$ffff8260.w   		; 4 Low resolution
 	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
 	move.b d0,91(a6)				; 3 $ffff8265
-	pause 4-3
+	pause 1
 
-	move.b	d7,$ffff8260.w			; 3 Left border
-	move.w	d7,$ffff8260.w			; 3
+		move.b	d7,$ffff8260.w			; 3 Left border
+		move.w	d7,$ffff8260.w			; 3
 
 	move.l (a4)+,(a5)+              ; 5
 	move.l (a4)+,(a5)+              ; 5
@@ -566,7 +565,7 @@ TimerAHandler
 	move.l (a3)+,d0                 ; 3 Screen value
 	move.l (a3)+,a4                 ; 3 Palette
 
-	pause 28-3-3
+	pause 22
 
 	movep.l d1,-5(a6)		    	; 6 $ffff8205/07/09/0B
 	nop
@@ -574,9 +573,9 @@ TimerAHandler
 	move.b #0,91(a6)				; 4 $ffff8265
 	add.l #160<<8,d1                ; 4
 
-	pause 17-4
-	move.w	d7,$ffff820a.w			;3 Right border
-	move.b	d7,$ffff820a.w			;3
+	pause 13
+		move.w	d7,$ffff820a.w			;3 Right border
+		move.b	d7,$ffff820a.w			;3
 	ENDR
 
 	; --------------------------------------------------
@@ -584,32 +583,78 @@ TimerAHandler
 	; --------------------------------------------------
 	REPT 1
 	pause 26
-	move.b	d7,$ffff8260.w			;3 Left border
-	move.w	d7,$ffff8260.w			;3
-	pause 90
-	move.w	d7,$ffff820a.w			;3 Right border
-	move.b	d7,$ffff820a.w			;3
+		move.b	d7,$ffff8260.w			;3 Left border
+		move.w	d7,$ffff8260.w			;3
+
+	pause 77-6-1-4-4-4
+
+	movep.l d1,-5(a6)		    	; 6 $ffff8205/07/09/0B
+	nop                             ; 1
+	move.b #1,$ffff8260.w   		; 4 Medium resolution
+	move.b #0,91(a6)				; 4 $ffff8265
+	add.l #160<<8,d1                ; 4
+
+	pause 13
+
+		move.w	d7,$ffff820a.w			;3 Right border
+		move.b	d7,$ffff820a.w			;3
 	pause 23
-	move.w	d7,$ffff820a.w			;3 left border
+		move.w	d7,$ffff820a.w			;3 left border
 	;-----------------------------------
-	move.b	d7,$ffff8260.w			;3 lower border
-	move.w	d7,$ffff8260.w			;3
-	move.b	d7,$ffff820a.w			;3
-	pause 87
-	move.w	d7,$ffff820a.w			;3 right border
-	move.b	d7,$ffff820a.w			;3
+		move.b	d7,$ffff8260.w			;3 lower border
+		move.w	d7,$ffff8260.w			;3
+		move.b	d7,$ffff820a.w			;3
+
+	pause 74-6-1-4-4-4
+
+	movep.l d1,-5(a6)		    	; 6 $ffff8205/07/09/0B
+	nop                             ; 1
+	move.b #1,$ffff8260.w   		; 4 Medium resolution
+	move.b #0,91(a6)				; 4 $ffff8265
+	add.l #160<<8,d1                ; 4
+
+	pause 13
+		move.w	d7,$ffff820a.w			;3 right border
+		move.b	d7,$ffff820a.w			;3
 	ENDR
 
 	; --------------------------------------------------
 	; Code for scanlines 229-272
 	; --------------------------------------------------
-	REPT 0  ;44
-	pause 26
-	move.b	d7,$ffff8260.w			;3 Left border
-	move.w	d7,$ffff8260.w			;3
-	pause 90
-	move.w	d7,$ffff820a.w			;3 Right border
-	move.b	d7,$ffff820a.w			;3
+	REPT 44
+    lea $ffff8240.w,a5    			; 2 palette
+	move.l (a4)+,(a5)+              ; 5
+	move.l (a4)+,(a5)+              ; 5
+
+	move.b #0,$ffff8260.w   		; 4 Low resolution
+	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
+	move.b d0,91(a6)				; 3 $ffff8265
+	pause 1
+
+		move.b	d7,$ffff8260.w			; 3 Left border
+		move.w	d7,$ffff8260.w			; 3
+
+	move.l (a4)+,(a5)+              ; 5
+	move.l (a4)+,(a5)+              ; 5
+	move.l (a4)+,(a5)+              ; 5
+	move.l (a4)+,(a5)+              ; 5
+	move.l (a4)+,(a5)+              ; 5
+	move.l (a4)+,(a5)+              ; 5
+
+	move.l (a3)+,d0                 ; 3 Screen value
+	move.l (a3)+,a4                 ; 3 Palette
+
+	pause 22
+
+	movep.l d1,-5(a6)		    	; 6 $ffff8205/07/09/0B
+	nop
+	move.b #1,$ffff8260.w   		; 4 Medium resolution
+	move.b #0,91(a6)				; 4 $ffff8265
+	add.l #160<<8,d1                ; 4
+
+	pause 13
+		move.w	d7,$ffff820a.w			;3 Right border
+		move.b	d7,$ffff820a.w			;3
 	ENDR
 
 	move.w #$707,$ffff8240.w
