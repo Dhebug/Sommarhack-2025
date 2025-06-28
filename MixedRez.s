@@ -294,6 +294,7 @@ Initialization
 
 	; And force the display list to point to nothing
 	jsr InitializeEmptyDisplayList
+	jsr InitializeSineOffsets
 
 	; Set the current image
 	move.l #sommarhack_multipalette,CurrentImage
@@ -334,6 +335,29 @@ InitializeEmptyDisplayList
 .loop
 	move.l d0,(a6)+       ; Line address (4) + pixel shift (1->2)
 	move.l a0,(a6)+       ; Palette pointer (4)
+	dbra d7,.loop		
+	rts
+
+
+
+InitializeSineOffsets
+	lea sine_255,a5           ; 16 bits, unsigned between 00 and 127
+	lea SineOffsets,a6        ; movep format
+	move.w #512-1,d7
+.loop
+	moveq #0,d1
+	moveq #0,d6
+	move.w (a5)+,d6       ;
+	add.w #96,d6          ; Offset
+	lsr.w #2,d6
+	move.b d6,d1
+	and.b #15,d1
+	lsr.w #4,d6
+	lsl.w #8,d6
+	lsl.w #3,d6
+	add.l d6,d1
+	move.l d1,512(a6)     ; Line adress (4) + pixel shift (1->2)
+	move.l d1,(a6)+       ; Line adress (4) + pixel shift (1->2)
 	dbra d7,.loop	
 	rts
 
@@ -350,31 +374,24 @@ UpdateDisplayList
 
 	lea DisplayList,a6        ; Target
 
-	lea sine_255,a5           ; 16 bits, unsigned between 00 and 127
+	lea SineOffsets,a5        ; movep format
 	add.w sine_offset,a5
-	add.w #2,sine_offset
-	and.w #511,sine_offset
+	add.w #4,sine_offset
+	and.w #1023,sine_offset
 
 	move.w #200-1,d7
 .loop
-	move.l d0,d1
-	moveq #0,d6
-	move.w (a5)+,d6       ;
-	add.w #48,d6          ; Offset
-	lsr.w #2,d6
-	move.b d6,d1
-	and.b #15,d1
-	lsr.w #4,d6
-	lsl.w #8,d6
-	lsl.w #3,d6
-	add.l d6,d1
-	move.l d1,(a6)+       ; Line adress (4) + pixel shift (1->2)
+	move.l (a5)+,d6       ;
+	add.l d0,d6
+	move.l d6,(a6)+       ; Line adress (4) + pixel shift (1->2)
 	move.l a0,(a6)+       ; Palette pointer (4)
 
-	add.l #32,a0
+	lea 32(a0),a0
 	add.l #160<<8,d0
 	dbra d7,.loop	
 	rts
+	
+
 
 sine_offset	dc.w 0
 
@@ -671,6 +688,8 @@ DisplayList		ds.b 276*(4+4)	; Screen Pointer + Pixel offset + Palette adress, fo
  				ds.b 200*(4+4)	; Security crap
 
 	even
+
+SineOffsets		ds.l 512*2
 
 
 bss_end       	ds.l 1 						; One final long so we can clear stuff without checking for overflows
