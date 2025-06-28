@@ -326,21 +326,40 @@ Initialization
 ; - Palette pointer (4)
 GenerateDisplayList
 	lea oxygen_multipalette,a0 ; Palette
+	;lea sommarhack_multipalette,a0
 	move.l a0,d0
 	add.l #6400,d0
 	lsl.l #8,d0               ; Image
 
 	lea DisplayList,a6        ; Target
+
+	lea sine_255,a5           ; 16 bits, unsigned between 00 and 127
+	add.w sine_offset,a5
+	add.w #2,sine_offset
+	and.w #511,sine_offset
+
 	move.w #276-1,d7
 .loop
-	move.l d0,(a6)+       ; Line adress (4) + pixel shift (1->2)
+	move.l d0,d1
+	moveq #0,d6
+	move.w (a5)+,d6       ;
+	add.w #48,d6          ; Offset
+	lsr.w #2,d6
+	move.b d6,d1
+	and.b #15,d1
+	lsr.w #4,d6
+	lsl.w #8,d6
+	lsl.w #3,d6
+	add.l d6,d1
+	move.l d1,(a6)+       ; Line adress (4) + pixel shift (1->2)
 	move.l a0,(a6)+       ; Palette pointer (4)
 
 	add.l #32,a0
-	add.l #160,d0
+	add.l #160<<8,d0
 	dbra d7,.loop	
 	rts
 
+sine_offset	dc.w 0
 
 
 ; MARK: VBL Handler
@@ -459,7 +478,7 @@ TimerAHandler
 	dcb.w 24,$4e71
   
 
-    lea $ffff8205.w,a6    			; 2 frequence
+    lea $ffff820a.w,a6    			; 2 frequence
 
 	
 	lea DisplayList,a3              ; 3
@@ -471,7 +490,7 @@ TimerAHandler
 	lsl.l #8,d1                     ; 6
 
 	moveq #2,d7				;D7 used for the overscan code
-
+ 
 	; --------------------------------------------------
 	; Code for scanlines 0-226 and 229-272
 	; --------------------------------------------------
@@ -482,11 +501,12 @@ TimerAHandler
 
 	pause 0
 	move.b #0,$ffff8260.w   		; 4 Low resolution
-	movep.l d0,0(a6)		    	; 6 $ffff8205/07/09/0B
-	add.l #160<<8,d0                ; 4
+	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
+	move.b d0,91(a6)				; 3 $ffff8265
+	pause 4-3
 
-	move.b	d7,$ffff8260.w			;3 Left border
-	move.w	d7,$ffff8260.w			;3
+	move.b	d7,$ffff8260.w			; 3 Left border
+	move.w	d7,$ffff8260.w			; 3
 
 	move.l (a4)+,(a5)+              ; 5
 	move.l (a4)+,(a5)+              ; 5
@@ -495,14 +515,18 @@ TimerAHandler
 	move.l (a4)+,(a5)+              ; 5
 	move.l (a4)+,(a5)+              ; 5
 
-	pause 28
+	move.l (a3)+,d0                 ; 3 Screen value
+	move.l (a3)+,a4                 ; 3 Palette
 
-	movep.l d1,0(a6)		    	; 6 $ffff8205/07/09/0B
+	pause 28-3-3
+
+	movep.l d1,-5(a6)		    	; 6 $ffff8205/07/09/0B
 	nop
 	move.b #1,$ffff8260.w   		; 4 Medium resolution
+	move.b #0,91(a6)				; 4 $ffff8265
 	add.l #160<<8,d1                ; 4
 
-	pause 17
+	pause 17-4
 	move.w	d7,$ffff820a.w			;3 Right border
 	move.b	d7,$ffff820a.w			;3
 	ENDR
@@ -531,7 +555,7 @@ TimerAHandler
 	; --------------------------------------------------
 	; Code for scanlines 229-272
 	; --------------------------------------------------
-	REPT 44
+	REPT 0  ;44
 	pause 26
 	move.b	d7,$ffff8260.w			;3 Left border
 	move.w	d7,$ffff8260.w			;3
@@ -541,6 +565,9 @@ TimerAHandler
 	ENDR
 
 	move.w #$707,$ffff8240.w
+
+	jsr GenerateDisplayList
+	move.w #$007,$ffff8240.w
 
 	; Overscan end
 	movem.l	(sp)+,d0-a6
@@ -582,7 +609,7 @@ medium_rez
 ; 649x69 = 160*60 = 11040
 ; 11048 bytes
 sommarhack_logo
-	incbin "export\sommarhack_logo.bin"
+	;incbin "export\sommarhack_logo.bin"
 
 sine_255				; 16 bits, unsigned between 00 and 127
 	incbin "data\sine_255.bin"
