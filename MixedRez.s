@@ -316,25 +316,26 @@ Initialization
 	rts
 
 
-fullscr_ste_copy_pic:
-		;Copy picture to both workscreens
-	move.l #screen_buffer+256,d0
-	clr.b d0
-	move.l d0,a0
-	lea 160(a0),a0
+; Various types of contents in a Display List:
+; - Line adress (4) + pixel shift (1->2)
+; - Palette pointer (4)
+GenerateDisplayList
+	lea oxygen_multipalette,a0 ; Palette
+	move.l a0,d0
+	add.l #6400,d0
+	lsl.l #8,d0               ; Image
 
-		lea	fullscr_ste_picture+32,a2
+	lea DisplayList,a6        ; Target
+	move.w #276-1,d7
+.loop
+	move.l d0,(a6)+       ; Line adress (4) + pixel shift (1->2)
+	move.l a0,(a6)+       ; Palette pointer (4)
 
-		move.w	#273-1,d7
-.y:		move.w	#416/2/4-1,d6
-.x:
-		move.l	(a2)+,d0
-		move.l	d0,(a0)+
+	add.l #32,a0
+	add.l #160,d0
+	dbra d7,.loop	
+	rts
 
-		dbra	d6,.x
-		lea	224-208(a0),a0
-		dbra	d7,.y
-		rts
 
 
 ; MARK: VBL Handler
@@ -611,6 +612,12 @@ machine_is_megaste 		ds.b 1 		; MegaSTe is possibly supported, with Blitter timi
 
 screen_buffer	ds.b	160*276+256
 
+; Various types of contents in a Display List:
+; - Line adress (4) + pixel shift (1->2)
+; - Palette pointer (4)
+DisplayList_Top	ds.b 200*(4+4)	; Security crap
+DisplayList		ds.b 276*(4+4)	; Screen Pointer + Pixel offset + Palette adress, for each line
+ 				ds.b 200*(4+4)	; Security crap
 
 	even
 
