@@ -366,34 +366,48 @@ InitializeSineOffsets
 ; - Line adress (4) + pixel shift (1->2)
 ; - Palette pointer (4)
 UpdateDisplayList
+	lea DisplayList,a6        ; Target
+
+	lea sine_255,a5           ; 16 bits, unsigned between 00 and 127
+	add.w sine_offset_y,a5
+	add.w #2,sine_offset_y
+	and.w #511,sine_offset_y
+	move.w (a5),d0            ; 0-127
+	lsr.w #1,d0               ; 0-64
+	lsl.w #3,d0               ; x8
+	add.w d0,a6               ; Vertical bounce
+
+	lea SineOffsets,a5        ; movep format
+	add.w sine_offset_x,a5
+	add.w #4,sine_offset_x
+	and.w #1023,sine_offset_x
+
 	lea oxygen_multipalette,a0 ; Palette
 	;lea sommarhack_multipalette,a0
 	move.l a0,d0
 	add.l #6400,d0
 	lsl.l #8,d0               ; Image
 
-	lea DisplayList,a6        ; Target
-
-	lea SineOffsets,a5        ; movep format
-	add.w sine_offset,a5
-	add.w #4,sine_offset
-	and.w #1023,sine_offset
-
-	move.w #200-1,d7
-.loop
-	move.l (a5)+,d6       ;
-	add.l d0,d6
+	; Unrolled generator
+	REPT 200
+	move.l (a5)+,d6       ; Horizontal offset
+	add.l d0,d6           ; Scanline offset
 	move.l d6,(a6)+       ; Line adress (4) + pixel shift (1->2)
 	move.l a0,(a6)+       ; Palette pointer (4)
 
 	lea 32(a0),a0
 	add.l #160<<8,d0
-	dbra d7,.loop	
+	ENDR
 	rts
 	
 
+; Image is 200 pixels tall
+; Overscan is 276 pixels tall
+; 276-200=76
+; 128/2 -> 64
+sine_offset_x	dc.w 0
+sine_offset_y   dc.w 0
 
-sine_offset	dc.w 0
 
 
 ; MARK: VBL Handler
