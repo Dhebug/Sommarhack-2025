@@ -580,7 +580,7 @@ TimerAHandler
 	ENDR
 
 	; --------------------------------------------------
-	; Code for the 16 scanlines over the bottom border
+	; The 12 lines of "Breaking New Live" over the bottom border
 	; --------------------------------------------------
 	pause 2
 	lea breaking_news,a4    	 	; 3
@@ -617,7 +617,9 @@ TimerAHandler
 	ENDR
 
 
-	;
+	; --------------------------------------------------
+	; The few lines of the "news ticker" over the bottom border
+	; --------------------------------------------------
 	pause 2
 	lea news_ticker,a4    	 		; 3
 	lea $ffff8240.w,a5    			; 2 palette
@@ -628,8 +630,8 @@ TimerAHandler
 	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
 	add.l #208<<8,d0                ; 4
 
-	move.b	d7,$ffff8260.w			;3 Left border
-	move.w	d7,$ffff8260.w			;3
+		move.b	d7,$ffff8260.w			;3 Left border
+		move.w	d7,$ffff8260.w			;3
 
 	REPT 8
 	move.l (a4)+,(a5)+              ; 5
@@ -637,25 +639,10 @@ TimerAHandler
 
 	pause 90-5*8
 
-	move.w	d7,$ffff820a.w			;3 Right border
-	move.b	d7,$ffff820a.w			;3
+		move.w	d7,$ffff820a.w			;3 Right border
+		move.b	d7,$ffff820a.w			;3
 
 	REPT 3
-	pause 16
-	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
-	add.l #208<<8,d0                ; 4
-
-	move.b	d7,$ffff8260.w			;3 Left border
-	move.w	d7,$ffff8260.w			;3
-	pause 90
-	move.w	d7,$ffff820a.w			;3 Right border
-	move.b	d7,$ffff820a.w			;3
-	ENDR
-
-	; --------------------------------------------------
-	; Code for scanline 227-228 (lower border special case)
-	; --------------------------------------------------
-	REPT 1
 	pause 16
 	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
 	add.l #208<<8,d0                ; 4
@@ -664,6 +651,26 @@ TimerAHandler
 		move.w	d7,$ffff8260.w			;3
 
 	pause 90
+
+		move.w	d7,$ffff820a.w			;3 Right border
+		move.b	d7,$ffff820a.w			;3
+	ENDR
+
+	; --------------------------------------------------
+	; Code for scanline 227-228 (lower border special case)
+	; --------------------------------------------------
+	REPT 1
+	pause 16
+
+	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
+	add.l #208<<8,d0                ; 4
+
+		move.b	d7,$ffff8260.w			;3 Left border
+		move.w	d7,$ffff8260.w			;3
+
+	move.w #$777,$ffff8246.w        ; 4
+	pause 90-4-4
+	move.w #$777,$ffff8246.w        ; 4
 
 		move.w	d7,$ffff820a.w			;3 Right border
 		move.b	d7,$ffff820a.w			;3
@@ -685,7 +692,7 @@ TimerAHandler
 	ENDR
 
 	; --------------------------------------------------
-	; Code for the 16 scanlines under the bottom border
+	; The remain part of the "news ticker" under the bottom border
 	; --------------------------------------------------
 	REPT 23
 	pause 16
@@ -698,6 +705,10 @@ TimerAHandler
 		move.w	d7,$ffff820a.w			;3 Right border
 		move.b	d7,$ffff820a.w			;3
 	ENDR
+
+	; --------------------------------------------------
+	; Transition back to the distorting logos
+	; --------------------------------------------------
 
 	pause 16-3-6
 	;move.w #$070,$ffff8240.w        ; 4
