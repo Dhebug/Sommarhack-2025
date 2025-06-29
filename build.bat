@@ -15,7 +15,10 @@ bin\PictConv.exe -m1 -f1 -o7 data\oxygen.png export\oxygen_multipalette.bin
 bin\PictConv.exe -m1 -f1 -o7 data\peace.png export\peace_multipalette.bin
 bin\PictConv.exe -m1 -f1 -o7 data\nuclear.png export\nuclear_multipalette.bin
 bin\PictConv.exe -m1 -f1 -o7 data\tribunal.png export\tribunal_multipalette.bin
-::bin\PictConv.exe -m1 -f1 -o7 data\meme.png export\sommarhack_multipalette.bin
+
+bin\PictConv.exe -m1 -f0 -o7 -p1 data\breaking_news_live.png export\breaking_news_live.bin
+bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_ticker.png export\news_ticker.bin
+
 
 ::
 :: http://sun.hasenbraten.de/vasm/index.php?view=tutorial

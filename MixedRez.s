@@ -78,15 +78,15 @@ t1 set (\1-t6*6-t5*5-t4*4-t3*3-t2*2)
    endc
 
 pause macro		; Fast mode 
-delay set \1
+delay set (\1)
  ifne delay<9
 t4 set (delay)/5
 t3 set (delay-t4*5)/3
-t2 set (delay-t4*5-t3*3)/2
-t1 set (delay-t4*5-t3*3-t2*2)
+;t2 set (delay-t4*5-t3*3)/2
+t1 set (delay-t4*5-t3*3)
   dcb.w t4,$2e97  ; move.l (a7),(a7)  20/5
   dcb.w t3,$1e97  ; move.b (a7),(a7)  12/3
-  dcb.w t2,$8080  ; or.l d0,d0         8/2
+  ;dcb.w t2,$8080  ; or.l d0,d0         8/2
   dcb.w t1,$4e71  ; nop                4/1
  else 
   ifne delay>100
@@ -96,7 +96,6 @@ t1 set (delay-t4*5-t3*3-t2*2)
   endc
  endc
  endm
-
 
 
  SECTION TEXT
@@ -348,7 +347,7 @@ InitializeSineOffsets
 	moveq #0,d1
 	moveq #0,d6
 	move.w (a5)+,d6       ;
-	add.w #96,d6          ; Offset
+	add.w #144,d6          ; Offset
 	lsr.w #2,d6
 	move.b d6,d1
 	and.b #15,d1
@@ -527,7 +526,7 @@ TimerAHandler
   
 
     lea $ffff820a.w,a6    			; 2 frequence
-
+ 
 	
 	lea DisplayList,a3              ; 3
 	move.l (a3)+,d0                 ; 3 Screen value
@@ -542,7 +541,7 @@ TimerAHandler
 	; --------------------------------------------------
 	; Code for scanlines 0-226 and 229-272
 	; --------------------------------------------------
-	REPT 227
+	REPT 227-16
     lea $ffff8240.w,a5    			; 2 palette
 	move.l (a4)+,(a5)+              ; 5
 	move.l (a4)+,(a5)+              ; 5
@@ -573,55 +572,155 @@ TimerAHandler
 	move.b #0,91(a6)				; 4 $ffff8265
 	add.l #160<<8,d1                ; 4
 
-	pause 13
+	pause 13-4
+		move.w #$700,$ffff8246.w  ; 4 =============
+
 		move.w	d7,$ffff820a.w			;3 Right border
 		move.b	d7,$ffff820a.w			;3
+	ENDR
+
+	; --------------------------------------------------
+	; Code for the 16 scanlines over the bottom border
+	; --------------------------------------------------
+	pause 2
+	lea breaking_news,a4    	 	; 3
+	lea $ffff8240.w,a5    			; 2 palette
+
+	move.l #breaking_news+32,d0     ; 3
+	lsl.l #8,d0                     ; 6
+	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
+	add.l #208<<8,d0                ; 4
+
+	move.b	d7,$ffff8260.w			;3 Left border
+	move.w	d7,$ffff8260.w			;3
+
+	REPT 8
+	move.l (a4)+,(a5)+              ; 5
+	ENDR
+
+	pause 50
+
+	move.w	d7,$ffff820a.w			;3 Right border
+	move.b	d7,$ffff820a.w			;3
+
+	REPT 11
+	pause 16
+	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
+	add.l #208<<8,d0                ; 4
+
+	move.b	d7,$ffff8260.w			;3 Left border
+	move.w	d7,$ffff8260.w			;3
+	pause 90
+
+	move.w	d7,$ffff820a.w			;3 Right border
+	move.b	d7,$ffff820a.w			;3
+	ENDR
+
+
+	;
+	pause 2
+	lea news_ticker,a4    	 		; 3
+	lea $ffff8240.w,a5    			; 2 palette
+
+	move.l #news_ticker+32,d0     	; 3
+	lsl.l #8,d0                     ; 6
+
+	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
+	add.l #208<<8,d0                ; 4
+
+	move.b	d7,$ffff8260.w			;3 Left border
+	move.w	d7,$ffff8260.w			;3
+
+	REPT 8
+	move.l (a4)+,(a5)+              ; 5
+	ENDR
+
+	pause 90-5*8
+
+	move.w	d7,$ffff820a.w			;3 Right border
+	move.b	d7,$ffff820a.w			;3
+
+	REPT 3
+	pause 16
+	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
+	add.l #208<<8,d0                ; 4
+
+	move.b	d7,$ffff8260.w			;3 Left border
+	move.w	d7,$ffff8260.w			;3
+	pause 90
+	move.w	d7,$ffff820a.w			;3 Right border
+	move.b	d7,$ffff820a.w			;3
 	ENDR
 
 	; --------------------------------------------------
 	; Code for scanline 227-228 (lower border special case)
 	; --------------------------------------------------
 	REPT 1
-	pause 26
+	pause 16
+	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
+	add.l #208<<8,d0                ; 4
+
 		move.b	d7,$ffff8260.w			;3 Left border
 		move.w	d7,$ffff8260.w			;3
 
-	pause 77-6-1-4-4-4
-
-	movep.l d1,-5(a6)		    	; 6 $ffff8205/07/09/0B
-	nop                             ; 1
-	move.b #1,$ffff8260.w   		; 4 Medium resolution
-	move.b #0,91(a6)				; 4 $ffff8265
-	add.l #160<<8,d1                ; 4
-
-	pause 13
+	pause 90
 
 		move.w	d7,$ffff820a.w			;3 Right border
 		move.b	d7,$ffff820a.w			;3
-	pause 23
+
+	pause 13
+	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
+	add.l #208<<8,d0                ; 4
+
 		move.w	d7,$ffff820a.w			;3 left border
 	;-----------------------------------
 		move.b	d7,$ffff8260.w			;3 lower border
 		move.w	d7,$ffff8260.w			;3
 		move.b	d7,$ffff820a.w			;3
 
-	pause 74-6-1-4-4-4
-
-	movep.l d1,-5(a6)		    	; 6 $ffff8205/07/09/0B
-	nop                             ; 1
-	move.b #1,$ffff8260.w   		; 4 Medium resolution
-	move.b #0,91(a6)				; 4 $ffff8265
-	add.l #160<<8,d1                ; 4
-
-	pause 13
+	pause 87
+	
 		move.w	d7,$ffff820a.w			;3 right border
 		move.b	d7,$ffff820a.w			;3
 	ENDR
 
 	; --------------------------------------------------
+	; Code for the 16 scanlines under the bottom border
+	; --------------------------------------------------
+	REPT 23
+	pause 16
+	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
+	add.l #208<<8,d0                ; 4
+
+		move.b	d7,$ffff8260.w			;3 Left border
+		move.w	d7,$ffff8260.w			;3
+	pause 90
+		move.w	d7,$ffff820a.w			;3 Right border
+		move.b	d7,$ffff820a.w			;3
+	ENDR
+
+	pause 16-3-6
+	;move.w #$070,$ffff8240.w        ; 4
+	move.l #blank_scanline+32,d0    ; 3
+	lsl.l #8,d0                     ; 6
+
+	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
+	add.l #208<<8,d0                ; 4
+
+		move.b	d7,$ffff8260.w			;3 Left border
+		move.w	d7,$ffff8260.w			;3
+	pause 90-2-3-3
+	lea (12+30)*8(a3),a3            ; 2 Skip the news ticker section
+	move.l (a3)+,d0                 ; 3 Screen value
+	move.l (a3)+,a4                 ; 3 Palette
+
+		move.w	d7,$ffff820a.w			;3 Right border
+		move.b	d7,$ffff820a.w			;3
+
+	; --------------------------------------------------
 	; Code for scanlines 229-272
 	; --------------------------------------------------
-	REPT 44
+	REPT 44-23
     lea $ffff8240.w,a5    			; 2 palette
 	move.l (a4)+,(a5)+              ; 5
 	move.l (a4)+,(a5)+              ; 5
@@ -652,15 +751,17 @@ TimerAHandler
 	move.b #0,91(a6)				; 4 $ffff8265
 	add.l #160<<8,d1                ; 4
 
-	pause 13
+	pause 13-4
+		move.w #$700,$ffff8246.w  ; 4 =============
+
 		move.w	d7,$ffff820a.w			;3 Right border
 		move.b	d7,$ffff820a.w			;3
 	ENDR
 
-	move.w #$707,$ffff8240.w
+	move.w #$000,$ffff8240.w
 
 	jsr UpdateDisplayList
-	move.w #$007,$ffff8240.w
+	;move.w #$000,$ffff8240.w
 
 	; Overscan end
 	movem.l	(sp)+,d0-a6
@@ -699,6 +800,12 @@ tribunal_multipalette
 medium_rez
 	incbin "export\atari_text_640x200.bin"
 
+breaking_news
+	incbin "export\breaking_news_live.bin"
+
+news_ticker
+	incbin "export\news_ticker.bin"
+
 ; 649x69 = 160*60 = 11040
 ; 11048 bytes
 sommarhack_logo
@@ -728,16 +835,14 @@ bss_start
 
 CurrentImage	ds.l 1
 
-black_palette			ds.w 16     ; These two should stay black
-blank_scanline          ds.w 224    ; Probably more like 224 bytes, but does not care
-
 settings        		ds.b 256
 machine_is_ste			ds.b 1 		; We only run on STe type machines
 machine_is_megaste 		ds.b 1 		; MegaSTe is possibly supported, with Blitter timing fixes
 
 	even
-
-screen_buffer	ds.b	160*276+256
+black_palette			ds.w 16     ; These two should stay black
+blank_scanline          ds.w 224    ; Probably more like 224 bytes, but does not care
+screen_buffer			ds.b 160*276+256
 
 ; Various types of contents in a Display List:
 ; - Line adress (4) + pixel shift (1->2)
