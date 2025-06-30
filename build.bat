@@ -10,8 +10,12 @@ for /F %%a in ('"prompt $E$S & echo on & for %%b in (1) do rem"') do set "ESC=%%
 echo %ESC%[1mBuild started: %date% %time%%ESC%[0m
 
 md export
+bin\PictConv.exe -m1 -f4 -o7 data\sommarhack_logo.png export\sommarhack_logo.bin
+bin\PictConv.exe -m1 -f4 -o7 -p1 data\atari_text_640x200.png export\atari_text_640x200.bin
+bin\PictConv.exe -m1 -f4 -o7 -p1 data\scenesat_logo.png export\scenesat_logo.bin
+
 bin\PictConv.exe -m1 -f1 -o7 data\sommarhack_multipalette.png export\sommarhack_multipalette.bin
-bin\PictConv.exe -m1 -f1 -o7 data\oxygen.png export\oxygen_multipalette.bin
+bin\PictConv.exe -m1 -f1 -o7 -p1 data\oxygen.png export\oxygen_multipalette.bin
 bin\PictConv.exe -m1 -f1 -o7 data\peace.png export\peace_multipalette.bin
 bin\PictConv.exe -m1 -f1 -o7 data\nuclear.png export\nuclear_multipalette.bin
 bin\PictConv.exe -m1 -f1 -o7 data\tribunal.png export\tribunal_multipalette.bin

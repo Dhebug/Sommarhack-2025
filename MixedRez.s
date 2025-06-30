@@ -323,8 +323,14 @@ Initialization
 	rts
 
 
+semi_black_palette
+	dc.w $000,$700,$070,$777
+	dcb.w 16
+
+
 InitializeEmptyDisplayList
-	lea black_palette,a0 		; Black palette
+	;lea black_palette,a0 		; Black palette
+	lea semi_black_palette,a0   ; Palette with the 4 mid res reserved colors
 	move.l #blank_scanline,d0	; Blank scanline
 	lsl.l #8,d0               	; Shifted for movep
 
@@ -572,8 +578,8 @@ TimerAHandler
 	move.b #0,91(a6)				; 4 $ffff8265
 	add.l #160<<8,d1                ; 4
 
-	pause 13-4
-		move.w #$700,$ffff8246.w  ; 4 =============
+	pause 13 ;-4
+		;move.w #$700,$ffff8246.w  ; 4 =============
 
 		move.w	d7,$ffff820a.w			;3 Right border
 		move.b	d7,$ffff820a.w			;3
@@ -710,7 +716,7 @@ TimerAHandler
 	; Transition back to the distorting logos
 	; --------------------------------------------------
 
-	pause 16-3-6
+	pause 7
 	;move.w #$070,$ffff8240.w        ; 4
 	move.l #blank_scanline+32,d0    ; 3
 	lsl.l #8,d0                     ; 6
@@ -720,10 +726,14 @@ TimerAHandler
 
 		move.b	d7,$ffff8260.w			;3 Left border
 		move.w	d7,$ffff8260.w			;3
-	pause 90-2-3-3
+	pause 82-3-1-6
 	lea (12+30)*8(a3),a3            ; 2 Skip the news ticker section
 	move.l (a3)+,d0                 ; 3 Screen value
 	move.l (a3)+,a4                 ; 3 Palette
+
+	move.l #scene_sat_logo+8,a0			; 3
+	move.l a0,d1					; 1
+	lsl.l #8,d1                     ; 6
 
 		move.w	d7,$ffff820a.w			;3 Right border
 		move.b	d7,$ffff820a.w			;3
@@ -760,10 +770,10 @@ TimerAHandler
 	nop
 	move.b #1,$ffff8260.w   		; 4 Medium resolution
 	move.b #0,91(a6)				; 4 $ffff8265
-	add.l #160<<8,d1                ; 4
+	add.l #92<<8,d1                ; 4
 
-	pause 13-4
-		move.w #$700,$ffff8246.w  ; 4 =============
+	pause 13 ;-4
+		;move.w #$700,$ffff8246.w  ; 4 =============
 
 		move.w	d7,$ffff820a.w			;3 Right border
 		move.b	d7,$ffff820a.w			;3
@@ -816,6 +826,9 @@ breaking_news
 
 news_ticker
 	incbin "export\news_ticker.bin"
+
+scene_sat_logo
+	incbin "export\scenesat_logo.bin"
 
 ; 649x69 = 160*60 = 11040
 ; 11048 bytes
