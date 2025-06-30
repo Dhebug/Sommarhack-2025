@@ -353,7 +353,7 @@ InitializeSineOffsets
 	moveq #0,d1
 	moveq #0,d6
 	move.w (a5)+,d6       ;
-	add.w #144,d6          ; Offset
+	add.w #160,d6          ; Offset
 	lsr.w #2,d6
 	move.b d6,d1
 	and.b #15,d1
@@ -510,10 +510,10 @@ TimerAHandler
 	move.w	#$2700,sr			;Stop all interrupts
 	clr.b	$fffffa19.w			;Stop Timer A
 
-	dcb.w 	84,$4e71			;Have fun for a bit
+	pause  84
 
 	move.b	#0,$ffff820a.w			;Remove the top border
-	dcb.w 	9,$4e71				;
+	pause 9
 	move.b	#2,$ffff820a.w			;
 	move.w	#$2300,sr			;
 
@@ -528,12 +528,11 @@ TimerAHandler
 
 	;inits
 	
-	dcb.w 24,$4e71
+	pause 21-3-1-3
   
-
     lea $ffff820a.w,a6    			; 2 frequence
- 
-	
+ 	lea $ffff8240.w,a5    			; 2 palette
+
 	lea DisplayList,a3              ; 3
 	move.l (a3)+,d0                 ; 3 Screen value
 	move.l (a3)+,a4                 ; 3 Palette
@@ -542,20 +541,23 @@ TimerAHandler
 	move.l a0,d1					; 1
 	lsl.l #8,d1                     ; 6
 
-	moveq #2,d7				;D7 used for the overscan code
- 
+	move.l #$0f0000f0,d3            ; 3 RED+GREEN
+	moveq #1,d4                     ; 1 d4 for medium rez
+	move.l #$00f00fff,d5            ; 3 GREEN+WHITE               
+	moveq #0,d6                     ; 1 d6 for clearing stuff
+	moveq #2,d7						; 1 d7 used for the overscan code
+  
 	; --------------------------------------------------
 	; Code for scanlines 0-226 and 229-272
 	; --------------------------------------------------
-	REPT 227-16
-    lea $ffff8240.w,a5    			; 2 palette
+	REPT 227-16    
 	move.l (a4)+,(a5)+              ; 5
 	move.l (a4)+,(a5)+              ; 5
+	pause 4
 
-	move.b #0,$ffff8260.w   		; 4 Low resolution
+	move.b d6,$ffff8260.w   		; 3 Low resolution
 	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
 	move.b d0,91(a6)				; 3 $ffff8265
-	pause 1
 
 		move.b	d7,$ffff8260.w			; 3 Left border
 		move.w	d7,$ffff8260.w			; 3
@@ -570,16 +572,23 @@ TimerAHandler
 	move.l (a3)+,d0                 ; 3 Screen value
 	move.l (a3)+,a4                 ; 3 Palette
 
-	pause 22
+	; BLACK, RED, GREEN, WHITE
+	lea $ffff8240.w,a5    			; 2 palette
+	move.l d6,(a5)                  ; 3 clear the two first color registers
+  	move.l d6,4(a5)                 ; 4 clear the next two color registers
+	pause 13-3
+  	move.w d5,6(a5)                 ; 3 restore the WHITE color
 
 	movep.l d1,-5(a6)		    	; 6 $ffff8205/07/09/0B
 	nop
-	move.b #1,$ffff8260.w   		; 4 Medium resolution
 	move.b #0,91(a6)				; 4 $ffff8265
-	add.l #160<<8,d1                ; 4
+	move.b #1,$ffff8260.w   		; 4 Medium resolution
+  	move.l d3,2(a5)                 ; 4 restore the RED and GREEN colors
 
-	pause 13 ;-4
+	pause 13-4 ;-4
 		;move.w #$700,$ffff8246.w  ; 4 =============
+
+	add.l #160<<8,d1                ; 4
 
 		move.w	d7,$ffff820a.w			;3 Right border
 		move.b	d7,$ffff820a.w			;3
@@ -649,9 +658,9 @@ TimerAHandler
 		move.b	d7,$ffff820a.w			;3
 
 	REPT 3
-	pause 16
-	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
-	add.l #208<<8,d0                ; 4
+	pause 16+6+4
+	;movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
+	;add.l #208<<8,d0                ; 4
 
 		move.b	d7,$ffff8260.w			;3 Left border
 		move.w	d7,$ffff8260.w			;3
@@ -666,10 +675,10 @@ TimerAHandler
 	; Code for scanline 227-228 (lower border special case)
 	; --------------------------------------------------
 	REPT 1
-	pause 16
+	pause 16+6+4
 
-	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
-	add.l #208<<8,d0                ; 4
+	;movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
+	;add.l #208<<8,d0                ; 4
 
 		move.b	d7,$ffff8260.w			;3 Left border
 		move.w	d7,$ffff8260.w			;3
@@ -681,9 +690,9 @@ TimerAHandler
 		move.w	d7,$ffff820a.w			;3 Right border
 		move.b	d7,$ffff820a.w			;3
 
-	pause 13
-	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
-	add.l #208<<8,d0                ; 4
+	pause 13+6+4
+	;movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
+	;add.l #208<<8,d0                ; 4
 
 		move.w	d7,$ffff820a.w			;3 left border
 	;-----------------------------------
@@ -701,9 +710,9 @@ TimerAHandler
 	; The remain part of the "news ticker" under the bottom border
 	; --------------------------------------------------
 	REPT 23
-	pause 16
-	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
-	add.l #208<<8,d0                ; 4
+	pause 16+6+4
+	;movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
+	;add.l #208<<8,d0                ; 4
 
 		move.b	d7,$ffff8260.w			;3 Left border
 		move.w	d7,$ffff8260.w			;3
