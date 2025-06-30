@@ -13,16 +13,29 @@ md export
 bin\PictConv.exe -m1 -f4 -o7 data\sommarhack_logo.png export\sommarhack_logo.bin
 bin\PictConv.exe -m1 -f4 -o7 -p1 data\atari_text_640x200.png export\atari_text_640x200.bin
 bin\PictConv.exe -m1 -f4 -o7 -p1 data\scenesat_logo.png export\scenesat_logo.bin
+bin\PictConv.exe -m1 -f4 -o7 -p1 data\scenesat_logo_black.png export\scenesat_logo_black.bin
+bin\PictConv.exe -m1 -f2 -o2 data\c64_charset.png export\c64_charset_converted.pi3
 
 bin\PictConv.exe -m1 -f1 -o7 data\sommarhack_multipalette.png export\sommarhack_multipalette.bin
 bin\PictConv.exe -m1 -f1 -o7 -p1 data\oxygen.png export\oxygen_multipalette.bin
 bin\PictConv.exe -m1 -f1 -o7 data\peace.png export\peace_multipalette.bin
 bin\PictConv.exe -m1 -f1 -o7 data\nuclear.png export\nuclear_multipalette.bin
 bin\PictConv.exe -m1 -f1 -o7 data\tribunal.png export\tribunal_multipalette.bin
+bin\PictConv.exe -m1 -f1 -o7 -p1 data\meme.png export\sommarhack_multipalette.bin
 
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\breaking_news_live.png export\breaking_news_live.bin
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_ticker.png export\news_ticker.bin
+bin\PictConv.exe -m1 -f0 -o7 -p1 data\black_ticker.png export\black_ticker.bin
 
+
+:: Works: PictConv - Version 1.000 - (Jul  1 2024 / 19:59:32) - This program is a part of the OSDK (http://www.osdk.org)
+:: Works: PictConv - Version 1.001 - (Nov 10 2024 / 12:46:04) - This program is a part of the OSDK (http://www.osdk.org)
+
+:: -m1 -o7 -f4 D:\Git\Sommarhack-2025\data\atari_text_640x200.png D:\Git\Sommarhack-2025\export\atari_text_640x200.bin
+:: -m1 -o7 -f1 D:\Git\Sommarhack-2025\data\sommarhack_multipalette.png D:\Git\Sommarhack-2025\export\sommarhack_multipalette.bin
+
+:: -m1 -o7 -f1 D:\Git\Sommarhack-2025\data\sommarhack_multipalette.png D:\Git\Sommarhack-2025\export\sommarhack_multipalette.bin
+:: -m1 -f4 -o7 -p1  D:\Git\Sommarhack-2025\data\atari_text_640x200.png D:\Git\Sommarhack-2025\export\atari_text_640x200.bin
 
 ::
 :: http://sun.hasenbraten.de/vasm/index.php?view=tutorial
@@ -62,7 +75,7 @@ SET TIMEOUT=0.5
 curl -s -m %TIMEOUT% -0 %ATARIP%/c?dir >nul
 if %ERRORLEVEL% equ 0 (
     ECHO.
-    echo %ESC%[1mUploading Executable to the Atari%ESC%[0m
+    echo %ESC%[1mUploading Executable to the Atari to %ATARIP% %ESC%[0m
     bin\curl.exe -0T %ATARIPRG% %ATARIP%/g/sommarhk/%ATARIPRG%
 
     ECHO.

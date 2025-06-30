@@ -98,6 +98,20 @@ t1 set (delay-t4*5-t3*3)
  endm
 
 
+; 1=filename
+; 2=start label
+; 3=end label (optional)
+FILE macro
+	even
+\2
+	incbin \1
+	ifne NARG-3
+\3
+	endc
+	even
+	endm
+
+
  SECTION TEXT
   
 
@@ -201,6 +215,10 @@ SuperMain
 	move.w #$2700,sr
 	bsr SaveSettings
 	bsr Initialization
+
+	; Main demo
+	jsr DemoSequence
+
 .loop_forever
 	bra.s	.loop_forever		; infinite wait loop
 exit                            ; We actual come back here from anywhere, including IRQs
@@ -298,6 +316,21 @@ Initialization
 	; Set the current image
 	move.l #sommarhack_multipalette,CurrentImage
 
+	; Initialize the text
+	move.l #medium_rez+8+20,message_screen_ptr
+	move.l #160,message_screen_width
+	move.l #0,message_screen_offset
+
+ ifne 0
+	lea MessageEaster1,a0
+
+	moveq #0,d0
+	bsr PrintMessage2 	 ; Brought to you by...
+
+	moveq #0,d0
+	bsr PrintMessage2   ; Software:
+ endc
+
 	; Initialize the music	 
  ifne enable_music
 	moveq #1,d0             ; Subtune number
@@ -314,7 +347,7 @@ Initialization
  	clr.b	$fffffa19.w				; stop timer A
 	clr.b	$fffffa1b.w				; stop timer B
  	
-	move.l #VblHandler,$70.w        ; set the VBL handler
+	move.l #VblInstall,$70.w        ; set the VBL handler
 
 	; Waits for the VBL, and change the resolution to avoid glitches
 	stop #$2300
@@ -367,6 +400,36 @@ InitializeSineOffsets
 	rts
 
 
+DemoSequence	
+
+	move.w #50*2,d0
+	jsr WaitDelay
+
+	lea MessageEaster1,a0
+
+	moveq #0,d0
+	bsr PrintMessage2 	 ; Brought to you by...
+
+
+	; Enable the breaking news logo
+	jsr WaitVbl
+	move.l #breaking_news,breaking_news_palette
+	move.l #breaking_news+32,breaking_news_image
+
+	move.w #50*2,d0
+	jsr WaitDelay
+
+	; Enable the weather forecast ticker
+	jsr WaitVbl
+	move.l #news_ticker,ticker_palette
+	move.l #news_ticker+32,ticker_image
+
+	moveq #0,d0
+	bsr PrintMessage2   ; Software:
+	rts
+
+
+
 ; Various types of contents in a Display List:
 ; - Line adress (4) + pixel shift (1->2)
 ; - Palette pointer (4)
@@ -414,6 +477,29 @@ sine_offset_x	dc.w 0
 sine_offset_y   dc.w 0
 
 
+WaitDelay 
+	bsr WaitVbl
+	dbra d0,WaitDelay
+	rts
+
+WaitVbl
+ 	sf flag_vbl
+SyncVbl
+.loop
+	tst.b flag_vbl
+ 	beq.s .loop
+ 	sf flag_vbl
+ 	rts
+
+
+VblDoNothing
+	st flag_vbl
+ 	rte
+
+VblInstall
+	move.l #VblHandler,$70.w
+	st flag_vbl
+ 	rte
 
 ; MARK: VBL Handler
 VblHandler:
@@ -470,6 +556,7 @@ end_key
 
 	movem.l (sp)+,d0-d7/a0-a6
 
+	st flag_vbl
 	bclr.b	#5,$fffffa0f.w
 	rte
 
@@ -598,52 +685,12 @@ TimerAHandler
 	; The 12 lines of "Breaking New Live" over the bottom border
 	; --------------------------------------------------
 	pause 2
-	lea breaking_news,a4    	 	; 3
+	move.l breaking_news_palette,a4 ; 5
 	lea $ffff8240.w,a5    			; 2 palette
 
-	move.l #breaking_news+32,d0     ; 3
+	move.l breaking_news_image,d0   ; 5
 	lsl.l #8,d0                     ; 6
 	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
-	add.l #208<<8,d0                ; 4
-
-	move.b	d7,$ffff8260.w			;3 Left border
-	move.w	d7,$ffff8260.w			;3
-
-	REPT 8
-	move.l (a4)+,(a5)+              ; 5
-	ENDR
-
-	pause 50
-
-	move.w	d7,$ffff820a.w			;3 Right border
-	move.b	d7,$ffff820a.w			;3
-
-	REPT 11
-	pause 16
-	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
-	add.l #208<<8,d0                ; 4
-
-	move.b	d7,$ffff8260.w			;3 Left border
-	move.w	d7,$ffff8260.w			;3
-	pause 90
-
-	move.w	d7,$ffff820a.w			;3 Right border
-	move.b	d7,$ffff820a.w			;3
-	ENDR
-
-
-	; --------------------------------------------------
-	; The few lines of the "news ticker" over the bottom border
-	; --------------------------------------------------
-	pause 2
-	lea news_ticker,a4    	 		; 3
-	lea $ffff8240.w,a5    			; 2 palette
-
-	move.l #news_ticker+32,d0     	; 3
-	lsl.l #8,d0                     ; 6
-
-	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
-	add.l #208<<8,d0                ; 4
 
 		move.b	d7,$ffff8260.w			;3 Left border
 		move.w	d7,$ffff8260.w			;3
@@ -652,15 +699,49 @@ TimerAHandler
 	move.l (a4)+,(a5)+              ; 5
 	ENDR
 
-	pause 90-5*8
+	pause 50
+		move.w	d7,$ffff820a.w			;3 Right border
+		move.b	d7,$ffff820a.w			;3
+
+	REPT 11
+	pause 26
+		move.b	d7,$ffff8260.w			;3 Left border
+		move.w	d7,$ffff8260.w			;3
+	pause 90
+		move.w	d7,$ffff820a.w			;3 Right border
+		move.b	d7,$ffff820a.w			;3
+	ENDR
+
+
+	; --------------------------------------------------
+	; The few lines of the "news ticker" over the bottom border
+	; --------------------------------------------------
+	pause 2+4+3-5+3-5
+	move.l ticker_palette,a4 		; 5
+	;lea news_ticker,a4    	 		; 3
+	lea $ffff8240.w,a5    			; 2 palette
+
+	move.l ticker_image,d0   		; 5
+	;move.l #news_ticker+32,d0     	; 3
+	lsl.l #8,d0                     ; 6
+
+	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
+
+		move.b	d7,$ffff8260.w			;3 Left border
+		move.w	d7,$ffff8260.w			;3
+
+	REPT 8
+	move.l (a4)+,(a5)+              ; 5
+	ENDR
+
+	add.l #208<<8,d0                ; 4
+	pause 50-4
 
 		move.w	d7,$ffff820a.w			;3 Right border
 		move.b	d7,$ffff820a.w			;3
 
 	REPT 3
-	pause 16+6+4
-	;movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
-	;add.l #208<<8,d0                ; 4
+	pause 26
 
 		move.b	d7,$ffff8260.w			;3 Left border
 		move.w	d7,$ffff8260.w			;3
@@ -675,33 +756,19 @@ TimerAHandler
 	; Code for scanline 227-228 (lower border special case)
 	; --------------------------------------------------
 	REPT 1
-	pause 16+6+4
-
-	;movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
-	;add.l #208<<8,d0                ; 4
-
+	pause 26
 		move.b	d7,$ffff8260.w			;3 Left border
 		move.w	d7,$ffff8260.w			;3
-
-	move.w #$777,$ffff8246.w        ; 4
-	pause 90-4-4
-	move.w #$777,$ffff8246.w        ; 4
-
+	pause 90
 		move.w	d7,$ffff820a.w			;3 Right border
 		move.b	d7,$ffff820a.w			;3
-
-	pause 13+6+4
-	;movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
-	;add.l #208<<8,d0                ; 4
-
+	pause 23
 		move.w	d7,$ffff820a.w			;3 left border
 	;-----------------------------------
 		move.b	d7,$ffff8260.w			;3 lower border
 		move.w	d7,$ffff8260.w			;3
 		move.b	d7,$ffff820a.w			;3
-
 	pause 87
-	
 		move.w	d7,$ffff820a.w			;3 right border
 		move.b	d7,$ffff820a.w			;3
 	ENDR
@@ -710,10 +777,7 @@ TimerAHandler
 	; The remain part of the "news ticker" under the bottom border
 	; --------------------------------------------------
 	REPT 23
-	pause 16+6+4
-	;movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
-	;add.l #208<<8,d0                ; 4
-
+	pause 26
 		move.b	d7,$ffff8260.w			;3 Left border
 		move.w	d7,$ffff8260.w			;3
 	pause 90
@@ -802,6 +866,92 @@ TimerAHandler
 	opt o+
 
 
+
+; a0 = message
+; d0 = x coordinate
+; message_screen_ptr=scanline screen location
+PrintMessage2
+ movem.l d1/d2/d3/d4/d5/d6/a1/a2/a3,-(sp)
+
+	move.l #$00030001,d6
+
+ move.l message_screen_offset,d5
+ move.l message_screen_ptr,a1
+ add d0,a1
+
+ moveq #0,d4
+print_message_loop
+ moveq #0,d1
+ move.b (a0)+,d1
+ beq print_message_end
+
+ cmp #1,d1
+ bne .no_carriage_return
+ add.l #160*8,message_screen_ptr
+ add.l #160*8,a1 
+	;move.l #$00030001,d6
+ bra print_message_loop
+.no_carriage_return
+
+ cmp #255,d1
+ bne .no_invert
+ eor #255,d4
+ bra print_message_loop
+.no_invert
+
+ sub #32,d1
+
+ move.l d1,d2
+ lea c64_charset_128x128,a2
+ and #15,d2
+ add d2,a2
+
+ move.l d1,d2
+ lsr #4,d2
+ and #15,d2
+ mulu #16*8,d2
+ add d2,a2
+
+ move.l a1,a3
+var set 0
+ rept 8
+ move.b var*16(a2),d3
+ eor.b d4,d3
+ move.b d3,(a3)
+ move.b d3,(a3,d5.l)
+ add.l message_screen_width,a3
+var set var+1  
+ endr 
+ add.w d6,a1
+ add.w d6,d0
+ swap d6
+
+ opt o-
+PrintMessageCallback
+ jsr DoNothing
+ opt o+
+
+ bra print_message_loop
+
+print_message_end
+ movem.l (sp)+,d1/d2/d3/d4/d5/d6/a1/a2/a3
+ rts
+
+
+MessageEaster1  dc.b "   Brought to ",255,"you",255," by...   ",0
+MessageEaster2  dc.b 1,1,"Software:",0
+MessageEaster3  dc.b 1,"Fred Bowen",0
+MessageEaster4  dc.b 1,"Terry Ryan",0
+MessageEaster5  dc.b 1,"Von Ertwine",0
+MessageEaster6  dc.b 1,1,"Herdware:",0
+MessageEaster7  dc.b 1,"Bill Herd",0
+MessageEaster8  dc.b 1,"Dave Haynie",0
+MessageEaster9  dc.b 1,"Frank Palaia",0
+MessageEaster10  dc.b 1,1,255,"Link arms, don't make them.",0
+MessageEaster11  dc.b 1,1,"ready.",0
+
+
+
 ; MARK: - DATA -
 	SECTION DATA
 
@@ -836,6 +986,11 @@ breaking_news
 news_ticker
 	incbin "export\news_ticker.bin"
 
+	FILE "export\black_ticker.bin",black_ticker                     ; Black "ticker" image
+	FILE "export\scenesat_logo_black.bin",scenesat_logo_black       ; Black tv canal image
+	FILE "export\c64_charset_converted.pi3",c64_charset_128x128     ; C64 character set
+
+
 scene_sat_logo
 	incbin "export\scenesat_logo.bin"
 
@@ -854,10 +1009,19 @@ sine_255				; 16 bits, unsigned between 00 and 127
 Music
 	incbin "data\SOS.SND"
 
+
+
 NotASteMessage
  	dc.b 27,"E","This demo works only on STE or MegaSTE,",10,13,"with a color screen",0
 
 	even
+
+; These are pointers that can be replaced
+breaking_news_palette	dc.l black_ticker
+breaking_news_image		dc.l black_ticker+32
+
+ticker_palette			dc.l black_ticker
+ticker_image			dc.l black_ticker+32
 
 ; MARK: - BSS -
 	SECTION BSS
@@ -872,6 +1036,8 @@ settings        		ds.b 256
 machine_is_ste			ds.b 1 		; We only run on STe type machines
 machine_is_megaste 		ds.b 1 		; MegaSTe is possibly supported, with Blitter timing fixes
 
+flag_vbl	 			ds.b 1	; Set to true at the end of the main screen handling interupt
+
 	even
 black_palette			ds.w 16     ; These two should stay black
 blank_scanline          ds.w 224    ; Probably more like 224 bytes, but does not care
@@ -885,6 +1051,10 @@ DisplayList		ds.b 276*(4+4)	; Screen Pointer + Pixel offset + Palette adress, fo
  				ds.b 200*(4+4)	; Security crap
 
 	even
+
+message_screen_offset 	ds.l 1
+message_screen_width	ds.l 1  
+message_screen_ptr		ds.l 1
 
 SineOffsets		ds.l 512*2
 
