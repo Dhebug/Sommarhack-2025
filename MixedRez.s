@@ -310,6 +310,7 @@ Initialization
 	movem.l	d0-d7,$ffff8240.w
 
 	; And force the display list to point to nothing
+	lea black_palette,a0 			; 100% black palette
 	jsr InitializeEmptyDisplayList
 	jsr InitializeSineOffsets
 
@@ -318,7 +319,7 @@ Initialization
 
 	; Initialize the text
 	move.l #medium_rez+8+20,message_screen_ptr
-	move.l #160,message_screen_width
+	move.l #92,message_screen_width
 	move.l #0,message_screen_offset
 
  ifne 0
@@ -361,9 +362,8 @@ semi_black_palette
 	dcb.w 16
 
 
+; A0 - Palette to use
 InitializeEmptyDisplayList
-	;lea black_palette,a0 		; Black palette
-	lea semi_black_palette,a0   ; Palette with the 4 mid res reserved colors
 	move.l #blank_scanline,d0	; Blank scanline
 	lsl.l #8,d0               	; Shifted for movep
 
@@ -399,8 +399,25 @@ InitializeSineOffsets
 	dbra d7,.loop	
 	rts
 
+; MARK: Defines
 
+SET_NEWS_TITLE macro
+	move.l #\1,news_title_palette
+	move.l #\1+32,news_title_bitmap
+	endm
+
+
+SET_NEWS_CONTENT macro
+	move.l #\1,news_content_palette
+	move.l #\1+32,news_content_bitmap
+	endm
+
+
+; MARK: Demo Sequence
 DemoSequence	
+	; Patch colors to hide the input panel
+	;move.l #$00000000,_patch_color_red_green
+	move.l #$00000000,_patch_color_green_white
 
 	move.w #50*2,d0
 	jsr WaitDelay
@@ -410,22 +427,93 @@ DemoSequence
 	moveq #0,d0
 	bsr PrintMessage2 	 ; Brought to you by...
 
+	move.w #50*2,d0
+	jsr WaitDelay
 
 	; Enable the breaking news logo
 	jsr WaitVbl
-	move.l #breaking_news,breaking_news_palette
-	move.l #breaking_news+32,breaking_news_image
+	SET_NEWS_TITLE news_title_placeholder
+
+	;rts
+
+	move.w #50*2,d0
+	jsr WaitDelay
+
+	jsr WaitVbl
+	moveq #0,d0
+	bsr PrintMessage2   ; Software:
+
+	; Show the "Place holder" news ticker
+	jsr WaitVbl
+	SET_NEWS_CONTENT news_content_placeholder
+
+	move.w #50*2,d0
+	jsr WaitDelay
+
+	; Show the "Encounter sales" news ticker
+	jsr WaitVbl
+	SET_NEWS_TITLE news_title_breaking_news
+	SET_NEWS_CONTENT news_content_encounter
 
 	move.w #50*2,d0
 	jsr WaitDelay
 
 	; Enable the weather forecast ticker
 	jsr WaitVbl
-	move.l #news_ticker,ticker_palette
-	move.l #news_ticker+32,ticker_image
+	SET_NEWS_TITLE news_title_weather
+	SET_NEWS_CONTENT news_content_weather
 
+	move.w #50*2,d0
+	jsr WaitDelay
+
+	jsr WaitVbl
 	moveq #0,d0
 	bsr PrintMessage2   ; Software:
+
+	; Bring the background to life
+	lea semi_black_palette,a0 			; 100% black palette
+	jsr InitializeEmptyDisplayList
+	move.l #$0f0000f0,_patch_color_red_green
+	move.l #$00f00fff,_patch_color_green_white
+
+	move.w #50*2,d0
+	jsr WaitDelay
+
+	jsr WaitVbl
+	moveq #0,d0
+	bsr PrintMessage2   ; Software:
+
+	; Enable the main distorter event
+	move.l #UpdateDisplayList,_patch_update
+
+	; Loop the news ticker
+.loop_news
+	; Weather forecast for Sommarhack
+	jsr WaitVbl
+	SET_NEWS_TITLE news_title_weather
+	SET_NEWS_CONTENT news_content_weather
+
+	move.w #50*5,d0
+	jsr WaitDelay
+
+	; Sommarhack mixed resolution information
+	jsr WaitVbl
+	SET_NEWS_TITLE news_title_useful_information
+	SET_NEWS_CONTENT news_content_mixed_resolution
+
+	move.w #50*5,d0
+	jsr WaitDelay
+
+	jsr WaitVbl
+	SET_NEWS_TITLE news_title_breaking_news
+	SET_NEWS_CONTENT news_content_dbug_attending
+
+	move.w #50*5,d0
+	jsr WaitDelay
+
+	bra .loop_news
+
+
 	rts
 
 
@@ -628,8 +716,10 @@ TimerAHandler
 	move.l a0,d1					; 1
 	lsl.l #8,d1                     ; 6
 
+_patch_color_red_green = *+2
 	move.l #$0f0000f0,d3            ; 3 RED+GREEN
 	moveq #1,d4                     ; 1 d4 for medium rez
+_patch_color_green_white = *+2
 	move.l #$00f00fff,d5            ; 3 GREEN+WHITE               
 	moveq #0,d6                     ; 1 d6 for clearing stuff
 	moveq #2,d7						; 1 d7 used for the overscan code
@@ -637,6 +727,7 @@ TimerAHandler
 	; --------------------------------------------------
 	; Code for scanlines 0-226 and 229-272
 	; --------------------------------------------------
+	; MARK: Display Top
 	REPT 227-16    
 	move.l (a4)+,(a5)+              ; 5
 	move.l (a4)+,(a5)+              ; 5
@@ -675,7 +766,7 @@ TimerAHandler
 	pause 13-4 ;-4
 		;move.w #$700,$ffff8246.w  ; 4 =============
 
-	add.l #160<<8,d1                ; 4
+	add.l #92<<8,d1                ; 4
 
 		move.w	d7,$ffff820a.w			;3 Right border
 		move.b	d7,$ffff820a.w			;3
@@ -684,11 +775,12 @@ TimerAHandler
 	; --------------------------------------------------
 	; The 12 lines of "Breaking New Live" over the bottom border
 	; --------------------------------------------------
+	; MARK: Info bar
 	pause 2
-	move.l breaking_news_palette,a4 ; 5
+	move.l news_title_palette,a4 ; 5
 	lea $ffff8240.w,a5    			; 2 palette
 
-	move.l breaking_news_image,d0   ; 5
+	move.l news_title_bitmap,d0   ; 5
 	lsl.l #8,d0                     ; 6
 	movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
 
@@ -716,12 +808,13 @@ TimerAHandler
 	; --------------------------------------------------
 	; The few lines of the "news ticker" over the bottom border
 	; --------------------------------------------------
+	; MARK: News ticker
 	pause 2+4+3-5+3-5
-	move.l ticker_palette,a4 		; 5
+	move.l news_content_palette,a4 		; 5
 	;lea news_ticker,a4    	 		; 3
 	lea $ffff8240.w,a5    			; 2 palette
 
-	move.l ticker_image,d0   		; 5
+	move.l news_content_bitmap,d0   		; 5
 	;move.l #news_ticker+32,d0     	; 3
 	lsl.l #8,d0                     ; 6
 
@@ -788,7 +881,7 @@ TimerAHandler
 	; --------------------------------------------------
 	; Transition back to the distorting logos
 	; --------------------------------------------------
-
+	; MARK: Display bottom
 	pause 7
 	;move.w #$070,$ffff8240.w        ; 4
 	move.l #blank_scanline+32,d0    ; 3
@@ -852,9 +945,12 @@ TimerAHandler
 		move.b	d7,$ffff820a.w			;3
 	ENDR
 
+	; MARK: Display end
 	move.w #$000,$ffff8240.w
 
-	jsr UpdateDisplayList
+_patch_update = *+2
+	jsr DoNothing
+	;jsr UpdateDisplayList
 	;move.w #$000,$ffff8240.w
 
 	; Overscan end
@@ -887,8 +983,10 @@ print_message_loop
 
  cmp #1,d1
  bne .no_carriage_return
- add.l #160*8,message_screen_ptr
- add.l #160*8,a1 
+ move.l message_screen_width,d1
+ lsl.l #3,d1
+ add.l d1,message_screen_ptr
+ add.l d1,a1 
 	;move.l #$00030001,d6
  bra print_message_loop
 .no_carriage_return
@@ -938,7 +1036,7 @@ print_message_end
  rts
 
 
-MessageEaster1  dc.b "   Brought to ",255,"you",255," by...   ",0
+MessageEaster1  dc.b "Brought to ",255,"you",255," by...   ",0
 MessageEaster2  dc.b 1,1,"Software:",0
 MessageEaster3  dc.b 1,"Fred Bowen",0
 MessageEaster4  dc.b 1,"Terry Ryan",0
@@ -978,17 +1076,31 @@ tribunal_multipalette
 	incbin "export\tribunal_multipalette.bin"
 
 medium_rez
-	incbin "export\atari_text_640x200.bin"
+	;incbin "export\atari_text_640x200.bin"
+	incbin "export\midrez_panel.bin"
 
-breaking_news
-	incbin "export\breaking_news_live.bin"
-
+; Spartan Extra Bold size 8
 news_ticker
 	incbin "export\news_ticker.bin"
 
 	FILE "export\black_ticker.bin",black_ticker                     ; Black "ticker" image
 	FILE "export\scenesat_logo_black.bin",scenesat_logo_black       ; Black tv canal image
 	FILE "export\c64_charset_converted.pi3",c64_charset_128x128     ; C64 character set
+
+; MARK: News title entries
+	FILE "export\news_title_placeholder.bin",news_title_placeholder 				; News title: Placeholder
+	FILE "export\news_title_breaking_news.bin",news_title_breaking_news 			; News title: Breaking news
+	FILE "export\news_title_useful_information.bin",news_title_useful_information 	; News title: Useful information
+	FILE "export\news_title_weather.bin",news_title_weather 						; News title: Weather forecast
+
+; MARK: News content entries
+	FILE "export\news_content_placeholder.bin",news_content_placeholder 			; News content: Placeholder
+	FILE "export\news_content_encounter.bin",news_content_encounter 				; News content: Encounter
+	FILE "export\news_content_mixed_resolution.bin",news_content_mixed_resolution	; News content: Mixed-Resolution
+	FILE "export\news_content_weather.bin",news_content_weather						; News content: Weather
+	FILE "export\news_content_dbug_attending.bin",news_content_dbug_attending		; News content: Dbug attending
+
+
 
 
 scene_sat_logo
@@ -1017,11 +1129,11 @@ NotASteMessage
 	even
 
 ; These are pointers that can be replaced
-breaking_news_palette	dc.l black_ticker
-breaking_news_image		dc.l black_ticker+32
+news_title_palette		dc.l black_ticker
+news_title_bitmap		dc.l black_ticker+32
 
-ticker_palette			dc.l black_ticker
-ticker_image			dc.l black_ticker+32
+news_content_palette	dc.l black_ticker
+news_content_bitmap		dc.l black_ticker+32
 
 ; MARK: - BSS -
 	SECTION BSS
@@ -1043,12 +1155,14 @@ black_palette			ds.w 16     ; These two should stay black
 blank_scanline          ds.w 224    ; Probably more like 224 bytes, but does not care
 screen_buffer			ds.b 160*276+256
 
+	even
+
 ; Various types of contents in a Display List:
 ; - Line adress (4) + pixel shift (1->2)
 ; - Palette pointer (4)
-DisplayList_Top	ds.b 200*(4+4)	; Security crap
+DisplayList_Top	ds.b 400*(4+4)	; Security crap
 DisplayList		ds.b 276*(4+4)	; Screen Pointer + Pixel offset + Palette adress, for each line
- 				ds.b 200*(4+4)	; Security crap
+ 				ds.b 400*(4+4)	; Security crap
 
 	even
 
