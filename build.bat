@@ -9,21 +9,22 @@ for /F %%a in ('"prompt $E$S & echo on & for %%b in (1) do rem"') do set "ESC=%%
 
 echo %ESC%[1mBuild started: %date% %time%%ESC%[0m
 
+::ECHO ON
 md export
-bin\PictConv.exe -m1 -f4 -o7 data\sommarhack_logo.png export\sommarhack_logo.bin
-bin\PictConv.exe -m1 -f4 -o7 -p1 data\atari_text_640x200.png export\atari_text_640x200.bin
+bin\PictConv.exe -m1 -f4 -o7 -p1 data\sommarhack_logo.png export\sommarhack_logo.bin
 bin\PictConv.exe -m1 -f4 -o7 -p1 data\scenesat_logo.png export\scenesat_logo.bin
 bin\PictConv.exe -m1 -f4 -o7 -p1 data\scenesat_logo_black.png export\scenesat_logo_black.bin
-bin\PictConv.exe -m1 -f4 -o7 -p1 data\midrez_panel.png export\midrez_panel.bin
 
 bin\PictConv.exe -m1 -f2 -o2 data\c64_charset.png export\c64_charset_converted.pi3
 
-bin\PictConv.exe -m1 -f1 -o7 data\sommarhack_multipalette.png export\sommarhack_multipalette.bin
-bin\PictConv.exe -m1 -f1 -o7 -p1 data\oxygen.png export\oxygen_multipalette.bin
-bin\PictConv.exe -m1 -f1 -o7 data\peace.png export\peace_multipalette.bin
-bin\PictConv.exe -m1 -f1 -o7 data\nuclear.png export\nuclear_multipalette.bin
-bin\PictConv.exe -m1 -f1 -o7 data\tribunal.png export\tribunal_multipalette.bin
 bin\PictConv.exe -m1 -f1 -o7 -p1 data\meme.png export\sommarhack_multipalette.bin
+
+:: Distorter images
+bin\PictConv.exe -m1 -f1 -o7 -p1 data\sommarhack_multipalette.png export\sommarhack_multipalette.bin
+bin\PictConv.exe -m1 -f1 -o7 -p1 data\oxygen.png export\oxygen_multipalette.bin
+bin\PictConv.exe -m1 -f1 -o7 -p1 data\peace.png export\peace_multipalette.bin
+bin\PictConv.exe -m1 -f1 -o7 -p1 data\nuclear.png export\nuclear_multipalette.bin
+bin\PictConv.exe -m1 -f1 -o7 -p1 data\tribunal.png export\tribunal_multipalette.bin
 
 :: News title entries
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_title_placeholder.png export\news_title_placeholder.bin
@@ -31,20 +32,24 @@ bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_title_breaking_news.png export\news_t
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_title_useful_information.png export\news_title_useful_information.bin
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_title_weather.png export\news_title_weather.bin
 
-:: New content entries
+:: News content entries
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_content_placeholder.png export\news_content_placeholder.bin
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_content_encounter.png export\news_content_encounter.bin
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_content_mixed_resolution.png export\news_content_mixed_resolution.bin
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_content_weather.png export\news_content_weather.bin
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_content_dbug_attending.png export\news_content_dbug_attending.bin
 
+:: Medium resolution content on the right side
+bin\PictConv.exe -m1 -f4 -o7 -p1 data\chat_panel.png export\chat_panel.bin
 
-bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_ticker.png export\news_ticker.bin
+
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\black_ticker.png export\black_ticker.bin
 
 
 :: Works: PictConv - Version 1.000 - (Jul  1 2024 / 19:59:32) - This program is a part of the OSDK (http://www.osdk.org)
 :: Works: PictConv - Version 1.001 - (Nov 10 2024 / 12:46:04) - This program is a part of the OSDK (http://www.osdk.org)
+::bin\PictConv.exe -m1 -f4 -o7 -p1 data\atari_text_640x200.png export\atari_text_640x200.bin
+::bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_ticker.png export\news_ticker.bin
 
 :: -m1 -o7 -f4 D:\Git\Sommarhack-2025\data\atari_text_640x200.png D:\Git\Sommarhack-2025\export\atari_text_640x200.bin
 :: -m1 -o7 -f1 D:\Git\Sommarhack-2025\data\sommarhack_multipalette.png D:\Git\Sommarhack-2025\export\sommarhack_multipalette.bin

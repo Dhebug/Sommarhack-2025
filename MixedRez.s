@@ -318,19 +318,9 @@ Initialization
 	move.l #sommarhack_multipalette,CurrentImage
 
 	; Initialize the text
-	move.l #medium_rez+8+20,message_screen_ptr
+	move.l #chat_panel+8+20,message_screen_ptr
 	move.l #92,message_screen_width
 	move.l #0,message_screen_offset
-
- ifne 0
-	lea MessageEaster1,a0
-
-	moveq #0,d0
-	bsr PrintMessage2 	 ; Brought to you by...
-
-	moveq #0,d0
-	bsr PrintMessage2   ; Software:
- endc
 
 	; Initialize the music	 
  ifne enable_music
@@ -413,62 +403,97 @@ SET_NEWS_CONTENT macro
 	endm
 
 
+PRINT_MESSAGE macro
+	move.l #\1,message_source_ptr
+	bsr PrintMessage2
+	endm
+
+PRINT_NEXT macro
+	jsr WaitVbl
+	bsr PrintMessage2
+	endm
+
+WAIT macro
+	move.w #\1,d0
+	jsr WaitDelay
+	endm
+
+WAIT_VBL macro
+	jsr WaitVbl
+	endm
+
 ; MARK: Demo Sequence
 DemoSequence	
 	; Patch colors to hide the input panel
 	;move.l #$00000000,_patch_color_red_green
 	move.l #$00000000,_patch_color_green_white
 
-	move.w #50*2,d0
-	jsr WaitDelay
+	;ifne 0
+	WAIT 50*2
 
-	lea MessageEaster1,a0
+	PRINT_MESSAGE MessageWelcome    ; Welcome to DemoVibe
+	PRINT_MESSAGE MessagePrompt    	; Please enter your query
 
-	moveq #0,d0
-	bsr PrintMessage2 	 ; Brought to you by...
+	WAIT 50*2
 
-	move.w #50*2,d0
-	jsr WaitDelay
+	PRINT_MESSAGE MessageNeedHelp 	; I need help with a demo for Sommarhack
 
-	; Enable the breaking news logo
-	jsr WaitVbl
-	SET_NEWS_TITLE news_title_placeholder
+	WAIT 50*2
 
-	;rts
+	PRINT_MESSAGE MessageDemoType 	; What's your idea?
 
-	move.w #50*2,d0
-	jsr WaitDelay
+	WAIT 50*2
 
-	jsr WaitVbl
-	moveq #0,d0
-	bsr PrintMessage2   ; Software:
+	PRINT_MESSAGE MessageTVStyle 	; TV Style!
+
+	WAIT 50*2
+
+	PRINT_MESSAGE MessageGreatIdea 	; Great idea
+
+	WAIT 50*2
+
+	PRINT_MESSAGE MessageNewsTicker ; News ticker
+
+	WAIT 50*2
+
+	WAIT_VBL
+	SET_NEWS_CONTENT news_content_placeholder	; Show the placeholder ticker content box
+
+	PRINT_MESSAGE MessageTickerPlaceholder 	; News ticker
+
+	WAIT 50*2
+
+	PRINT_MESSAGE MessageNewsTickerAlmost 	; Ticker almost
+
+	WAIT 50*2
+	WAIT 50*2
+	WAIT 50*2
+
+	WAIT 50*2
 
 	; Show the "Place holder" news ticker
-	jsr WaitVbl
-	SET_NEWS_CONTENT news_content_placeholder
+	WAIT_VBL
+	SET_NEWS_TITLE news_title_placeholder
 
-	move.w #50*2,d0
-	jsr WaitDelay
+	WAIT 50*2
 
 	; Show the "Encounter sales" news ticker
-	jsr WaitVbl
+	WAIT_VBL
 	SET_NEWS_TITLE news_title_breaking_news
 	SET_NEWS_CONTENT news_content_encounter
 
-	move.w #50*2,d0
-	jsr WaitDelay
+	WAIT 50*2
 
 	; Enable the weather forecast ticker
-	jsr WaitVbl
+	WAIT_VBL
 	SET_NEWS_TITLE news_title_weather
 	SET_NEWS_CONTENT news_content_weather
 
-	move.w #50*2,d0
-	jsr WaitDelay
+	WAIT 50*2
 
-	jsr WaitVbl
-	moveq #0,d0
+	WAIT_VBL
 	bsr PrintMessage2   ; Software:
+	;endc
 
 	; Bring the background to life
 	lea semi_black_palette,a0 			; 100% black palette
@@ -476,40 +501,43 @@ DemoSequence
 	move.l #$0f0000f0,_patch_color_red_green
 	move.l #$00f00fff,_patch_color_green_white
 
-	move.w #50*2,d0
-	jsr WaitDelay
+	WAIT 50*2
 
-	jsr WaitVbl
-	moveq #0,d0
+	WAIT_VBL
 	bsr PrintMessage2   ; Software:
 
+
 	; Enable the main distorter event
+	move.l #sommarhack_multipalette,displayList_image
 	move.l #UpdateDisplayList,_patch_update
+	WAIT 50*5
+
+	;rts
 
 	; Loop the news ticker
 .loop_news
 	; Weather forecast for Sommarhack
-	jsr WaitVbl
+	WAIT_VBL
 	SET_NEWS_TITLE news_title_weather
 	SET_NEWS_CONTENT news_content_weather
+	move.l #oxygen_multipalette,displayList_image
 
-	move.w #50*5,d0
-	jsr WaitDelay
+	WAIT 50*5
 
 	; Sommarhack mixed resolution information
-	jsr WaitVbl
+	WAIT_VBL
 	SET_NEWS_TITLE news_title_useful_information
 	SET_NEWS_CONTENT news_content_mixed_resolution
+	move.l #peace_multipalette,displayList_image
 
-	move.w #50*5,d0
-	jsr WaitDelay
+	WAIT 50*5
 
-	jsr WaitVbl
+	WAIT_VBL
 	SET_NEWS_TITLE news_title_breaking_news
 	SET_NEWS_CONTENT news_content_dbug_attending
+	move.l #nuclear_multipalette,displayList_image
 
-	move.w #50*5,d0
-	jsr WaitDelay
+	WAIT 50*5
 
 	bra .loop_news
 
@@ -518,6 +546,7 @@ DemoSequence
 
 
 
+; MARK: Update DL
 ; Various types of contents in a Display List:
 ; - Line adress (4) + pixel shift (1->2)
 ; - Palette pointer (4)
@@ -538,8 +567,9 @@ UpdateDisplayList
 	add.w #4,sine_offset_x
 	and.w #1023,sine_offset_x
 
-	lea oxygen_multipalette,a0 ; Palette
+	;lea oxygen_multipalette,a0 ; Palette
 	;lea sommarhack_multipalette,a0
+	move.l displayList_image,a0
 	move.l a0,d0
 	add.l #6400,d0
 	lsl.l #8,d0               ; Image
@@ -707,7 +737,7 @@ TimerAHandler
 	move.l (a3)+,d0                 ; 3 Screen value
 	move.l (a3)+,a4                 ; 3 Palette
 
-	move.l #medium_rez+8,a0			; 3
+	move.l #chat_panel+8,a0			; 3
 	move.l a0,d1					; 1
 	lsl.l #8,d1                     ; 6
 
@@ -747,10 +777,10 @@ _patch_color_green_white = *+2
 
 	; BLACK, RED, GREEN, WHITE
 	lea $ffff8240.w,a5    			; 2 palette
-	move.l d6,(a5)                  ; 3 clear the two first color registers
-  	move.l d6,4(a5)                 ; 4 clear the next two color registers
-	pause 13-3
-  	move.w d5,6(a5)                 ; 3 restore the WHITE color
+	;move.l d6,(a5)                  ; 3 clear the two first color registers
+  	;move.l d6,4(a5)                 ; 4 clear the next two color registers
+	pause 13-3+3+4+3
+  	;move.w d5,6(a5)                 ; 3 restore the WHITE color
 
 	movep.l d1,-5(a6)		    	; 6 $ffff8205/07/09/0B
 	nop
@@ -957,100 +987,135 @@ _patch_update = *+2
 	opt o+
 
 
-
-; a0 = message
-; d0 = x coordinate
-; message_screen_ptr=scanline screen location
+; MARK: PrintMessage
+; message_source_ptr = message
+; message_screen_ptr = scanline screen location
 PrintMessage2
- movem.l d1/d2/d3/d4/d5/d6/a1/a2/a3,-(sp)
+	movem.l d1/d2/d3/d4/d5/d6/a0/a1/a2/a3,-(sp)
+
+	move.l message_source_ptr,a0
 
 	move.l #$00030001,d6
 
- move.l message_screen_offset,d5
- move.l message_screen_ptr,a1
- add d0,a1
+	move.l message_screen_offset,d5
+	move.l message_screen_ptr,a1
 
- moveq #0,d4
+	moveq #0,d4
 print_message_loop
- moveq #0,d1
- move.b (a0)+,d1
- beq print_message_end
+	moveq #0,d1
+	move.b (a0)+,d1
+	beq print_message_end
 
- cmp #1,d1
- bne .no_carriage_return
- move.l message_screen_width,d1
- lsl.l #3,d1
- add.l d1,message_screen_ptr
- add.l d1,a1 
+	cmp #1,d1
+	bne .no_carriage_return
+	move.l message_screen_width,d1
+	lsl.l #3,d1
+	add.l d1,message_screen_ptr
+	move.l message_screen_ptr,a1
+	move.l #$00030001,d6
+
 	;move.l #$00030001,d6
- bra print_message_loop
+	bra print_message_loop
 .no_carriage_return
 
- cmp #255,d1
- bne .no_invert
- eor #255,d4
- bra print_message_loop
+	cmp #255,d1
+	bne .no_invert
+	eor #255,d4
+	bra print_message_loop
 .no_invert
 
- sub #32,d1
+	sub #32,d1
 
- move.l d1,d2
- lea c64_charset_128x128,a2
- and #15,d2
- add d2,a2
+	move.l d1,d2
+	lea c64_charset_128x128,a2
+	and #15,d2
+	add d2,a2
 
- move.l d1,d2
- lsr #4,d2
- and #15,d2
- mulu #16*8,d2
- add d2,a2
+	move.l d1,d2
+	lsr #4,d2
+	and #15,d2
+	mulu #16*8,d2
+	add d2,a2
 
- move.l a1,a3
+	move.l a1,a3
 var set 0
- rept 8
- move.b var*16(a2),d3
- eor.b d4,d3
- move.b d3,(a3)
- move.b d3,(a3,d5.l)
- add.l message_screen_width,a3
+	rept 8
+	move.b var*16(a2),d3
+	eor.b d4,d3
+	move.b d3,(a3)
+	move.b d3,(a3,d5.l)
+	add.l message_screen_width,a3
 var set var+1  
- endr 
- add.w d6,a1
- add.w d6,d0
- swap d6
+	endr 
+	add.w d6,a1
+	add.w d6,d0
+	swap d6
 
- opt o-
+	opt o-
 PrintMessageCallback
- jsr DoNothing
- opt o+
-
- bra print_message_loop
+	jsr DoNothing
+	opt o+
+	bra print_message_loop
 
 print_message_end
- movem.l (sp)+,d1/d2/d3/d4/d5/d6/a1/a2/a3
- rts
+	move.l a0,message_source_ptr
+	movem.l (sp)+,d1/d2/d3/d4/d5/d6/a0/a1/a2/a3
+	rts
 
+; Max 26 lines of text
+MessageWelcome  			dc.b "Welcome to AIScene'",255,"DemoVibe",255,0
+MessagePrompt   			dc.b 1,"Please enter your query:",0
 
-MessageEaster1  dc.b "Brought to ",255,"you",255," by...   ",0
-MessageEaster2  dc.b 1,1,"Software:",0
-MessageEaster3  dc.b 1,"Fred Bowen",0
-MessageEaster4  dc.b 1,"Terry Ryan",0
-MessageEaster5  dc.b 1,"Von Ertwine",0
-MessageEaster6  dc.b 1,1,"Herdware:",0
-MessageEaster7  dc.b 1,"Bill Herd",0
-MessageEaster8  dc.b 1,"Dave Haynie",0
-MessageEaster9  dc.b 1,"Frank Palaia",0
-MessageEaster10  dc.b 1,1,255,"Link arms, don't make them.",0
-MessageEaster11  dc.b 1,1,"ready.",0
+MessageNeedHelp 			dc.b 1
+							dc.b 1,126,"I need help with a demo for the"
+							dc.b 1,126,"Sommarhack 2025 demoparty!"
+							dc.b 1
+							dcb.b 30,127
+							dc.b 0
+
+MessageDemoType 			dc.b 1
+							dc.b 1,"I can help with that."
+							dc.b 1,"What did you have in mind?",0
+
+MessageTVStyle  			dc.b 1
+							dc.b 1,126,"I was thinking of something"
+							dc.b 1,126,"like a live TV newscast"
+							dc.b 1
+							dcb.b 30,127
+							dc.b 0
+
+MessageGreatIdea 			dc.b 1
+							dc.b 1,"Should be easy!"
+							dc.b 1,"Just tell me what you want :)",0
+
+MessageNewsTicker  			dc.b 1
+							dc.b 1,126,"I'd like some kind of band"
+							dc.b 1,126,"at the bottom showing various"
+							dc.b 1,126,"bits of information"
+							dc.b 1
+							dcb.b 30,127
+							dc.b 0
+
+MessageTickerPlaceholder	dc.b 1
+							dc.b 1,"There you go!"
+							dc.b 1,"Is it what you had in mind?",0
+
+MessageNewsTickerAlmost		dc.b 1
+							dc.b 1,126,"Almost! It needs a title"
+							dc.b 1,126,"section as well, not just"
+							dc.b 1,126,"content"
+							dc.b 1
+							dcb.b 30,127
+							dc.b 0
+
+	even
 
 
 
 ; MARK: - DATA -
+	even
 	SECTION DATA
-
-medium_rez
-	incbin "export\midrez_panel.bin"
-
+	even
 
 	FILE "export\black_ticker.bin",black_ticker                     ; Black "ticker" image
 	FILE "export\scenesat_logo_black.bin",scenesat_logo_black       ; Black tv canal image
@@ -1085,7 +1150,8 @@ medium_rez
 	FILE "export\nuclear_multipalette.bin",nuclear_multipalette						; Nuclear symbol
 	FILE "export\tribunal_multipalette.bin",tribunal_multipalette					; International Penal Court image
 
-
+; The medium resolution file panel on the right
+	FILE "export\chat_panel.bin",chat_panel				                            ; Max 26 lines of text	
 
 
 scene_sat_logo
@@ -1119,6 +1185,8 @@ news_title_bitmap		dc.l black_ticker+32
 
 news_content_palette	dc.l black_ticker
 news_content_bitmap		dc.l black_ticker+32
+
+displayList_image       dc.l sommarhack_multipalette
 
 ; MARK: - BSS -
 	SECTION BSS
@@ -1154,6 +1222,7 @@ DisplayList		ds.b 276*(4+4)	; Screen Pointer + Pixel offset + Palette adress, fo
 message_screen_offset 	ds.l 1
 message_screen_width	ds.l 1  
 message_screen_ptr		ds.l 1
+message_source_ptr      ds.l 1
 
 SineOffsets		ds.l 512*2
 
