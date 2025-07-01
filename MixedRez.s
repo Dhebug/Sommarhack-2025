@@ -599,12 +599,7 @@ VblHandler:
 	movem.l d0-d7/a0-a6,-(sp)
 
 	; First palette change
-	;move.l CurrentImage,d0     ;Set screenaddress
-	;move.l #fullscr_ste_picture+32,d0
-	;lsr.l	#8,d0				;
-	;move.l	d0,$ffff8200.w			;
-
-	movem.l	fullscr_ste_picture,d0-d7	;Set palette
+	movem.l	black_palette,d0-d7	;Set palette
 	movem.l	d0-d7,$ffff8240.w		;
 
 	;move.w #$700,$ffff8240.w
@@ -1053,52 +1048,42 @@ MessageEaster11  dc.b 1,1,"ready.",0
 ; MARK: - DATA -
 	SECTION DATA
 
-; 56816 bytes: 32+56816 -> 208 bytes per scanline
-fullscr_ste_picture:
-	incbin "export\dhs_fullscreen.bin"  ; ;416x273 four bitplanes and 32 byte palette at the start
-	even
-
-; 38400
-; 32000+6400
-sommarhack_multipalette
-	incbin "export\sommarhack_multipalette.bin"
-
-oxygen_multipalette
-	incbin "export\oxygen_multipalette.bin"
-
-peace_multipalette
-	incbin "export\peace_multipalette.bin"
-
-nuclear_multipalette
-	incbin "export\nuclear_multipalette.bin"
-
-tribunal_multipalette
-	incbin "export\tribunal_multipalette.bin"
-
 medium_rez
-	;incbin "export\atari_text_640x200.bin"
 	incbin "export\midrez_panel.bin"
 
-; Spartan Extra Bold size 8
-news_ticker
-	incbin "export\news_ticker.bin"
 
 	FILE "export\black_ticker.bin",black_ticker                     ; Black "ticker" image
 	FILE "export\scenesat_logo_black.bin",scenesat_logo_black       ; Black tv canal image
 	FILE "export\c64_charset_converted.pi3",c64_charset_128x128     ; C64 character set
 
+
 ; MARK: News title entries
+; Here are all the small images (476x11) used to display titles to the news ticker
+; Font used is "Spartan Light" Bold in size 7
 	FILE "export\news_title_placeholder.bin",news_title_placeholder 				; News title: Placeholder
 	FILE "export\news_title_breaking_news.bin",news_title_breaking_news 			; News title: Breaking news
 	FILE "export\news_title_useful_information.bin",news_title_useful_information 	; News title: Useful information
 	FILE "export\news_title_weather.bin",news_title_weather 						; News title: Weather forecast
 
+
 ; MARK: News content entries
+; Here are all the larger images (476x30) with the actual news ticker content
+; Font used is "Spartan Extra Bold" in size 8
 	FILE "export\news_content_placeholder.bin",news_content_placeholder 			; News content: Placeholder
 	FILE "export\news_content_encounter.bin",news_content_encounter 				; News content: Encounter
 	FILE "export\news_content_mixed_resolution.bin",news_content_mixed_resolution	; News content: Mixed-Resolution
 	FILE "export\news_content_weather.bin",news_content_weather						; News content: Weather
 	FILE "export\news_content_dbug_attending.bin",news_content_dbug_attending		; News content: Dbug attending
+
+
+; MARK: Multipalette images
+; These are the large images moving around and distorting on the left side
+; 6400 bytes of palette followed by 32000 bytes of bitmap data
+	FILE "export\sommarhack_multipalette.bin",sommarhack_multipalette				; Sommarhack logo
+	FILE "export\oxygen_multipalette.bin",oxygen_multipalette						; Oxygen album image with the earth
+	FILE "export\peace_multipalette.bin",peace_multipalette							; Love and peace logo
+	FILE "export\nuclear_multipalette.bin",nuclear_multipalette						; Nuclear symbol
+	FILE "export\tribunal_multipalette.bin",tribunal_multipalette					; International Penal Court image
 
 
 
