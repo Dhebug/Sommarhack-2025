@@ -314,6 +314,9 @@ Initialization
 	jsr InitializeEmptyDisplayList
 	jsr InitializeSineOffsets
 
+	lea tvlogo_black+8,a0
+	jsr PatchSommarhackLogo
+
 	; Set the current image
 	move.l #sommarhack_multipalette,CurrentImage
 
@@ -354,20 +357,6 @@ semi_black_palette
 	dc.w $000,$700,$070,$777
 	dcb.w 16
 
-
-; A0 - Palette to use
-InitializeEmptyDisplayList
-	move.l #blank_scanline,d0	; Blank scanline
-	lsl.l #8,d0               	; Shifted for movep
-
-	lea DisplayList,a6        ; Target
-
-	move.w #276-1,d7
-.loop
-	move.l d0,(a6)+       ; Line address (4) + pixel shift (1->2)
-	move.l a0,(a6)+       ; Palette pointer (4)
-	dbra d7,.loop		
-	rts
 
 
 
@@ -431,7 +420,7 @@ DemoSequence
 	;move.l #$00000000,_patch_color_red_green
 	move.l #$00000000,_patch_color_green_white
 
-	;ifne 0
+	ifne 1
 	WAIT 50*2
 
 	PRINT_MESSAGE MessageWelcome    ; Welcome to DemoVibe
@@ -500,17 +489,47 @@ DemoSequence
 	PRINT_MESSAGE MessageNewsSwitchColors 		; Awesome! Switch to light mode please
 
 	WAIT 50*2
+	endc
 
 	; Bring the background to life
 	lea semi_black_palette,a0 			; 100% black palette
 	jsr InitializeEmptyDisplayList
 	move.l #$0f0000f0,_patch_color_red_green
 	move.l #$00f00fff,_patch_color_green_white
+	move.l #tvlogo_blank+8,_patch_tvlogo
 
+	ifne 1
 	WAIT 50*1
 	PRINT_MESSAGE MessageTickerLightModeDone 	; Done!
 
+	WAIT 50*2
+	PRINT_MESSAGE MessageNeedTVLogo 	; Need TV Logo
+
+	WAIT 50*2
+	PRINT_MESSAGE MessageTVLogoPlaceholder 	; Done!
+
+	WAIT 50*1
+	move.l #tvlogo_placeholder+8,_patch_tvlogo
+	lea tvlogo_placeholder+8,a0
+	jsr PatchSommarhackLogo
+
+	WAIT 50*2
+	PRINT_MESSAGE MessageTVLogoCorrect 	; Should be demoscene related
+
+	WAIT 50*2
+	PRINT_MESSAGE MessageSuggestSceneSat 	; What about that one? (scene sat)
+
+	WAIT 50*1
+	move.l #tvlogo_scenesat+8,_patch_tvlogo
+	lea tvlogo_scenesat+8,a0
+	jsr PatchSommarhackLogo
+
+
+	WAIT 50*2
+	PRINT_MESSAGE MessageTVLogoCool 	; Hope they will not sue me
+
 	WAIT 50*5
+	endc 
 
 	; Show the "Encounter sales" news ticker
 	WAIT_VBL
@@ -558,6 +577,56 @@ DemoSequence
 
 
 
+
+; A0 - Patch data to use
+PatchSommarhackLogo
+	; sommarhack_tiny_logo 448*19 (low rez)    = 224 bytes * 19 lines
+	; tvlogo_scenesat      368*19 (medium rez) =  92 bytes * 19 lines
+	lea sommarhack_tiny_logo+32+224-92-4-8-4,a1
+	;lea tvlogo_scenesat+8,a0
+	move.w #19-1,d0
+.loop_scanline
+	REPT 23
+	move.l (a0)+,(a1)+
+	ENDR
+	lea 224-92(a1),a1
+	dbra d0,.loop_scanline	
+	rts
+
+
+; A0 - Palette to use
+InitializeEmptyDisplayList
+	move.l #blank_scanline,d0	; Blank scanline
+	lsl.l #8,d0               	; Shifted for movep
+
+	lea DisplayList,a6        ; Target
+
+	move.w #276-1,d7
+.loop
+	move.l d0,(a6)+       ; Line address (4) + pixel shift (1->2)
+	move.l a0,(a6)+       ; Palette pointer (4)
+	dbra d7,.loop	
+
+	jsr UpdateDisplayListWithSommarhack	
+	rts
+
+
+UpdateDisplayListWithSommarhack
+	; Overwrite the bottom with the sommarhack logo (19 scanlines tall)
+	lea DisplayList+(276-19-3)*8,a6        ; Target
+	lea sommarhack_tiny_logo,a0
+	move.l a0,d0
+	add.l #32,d0
+	lsl.l #8,d0               ; Image
+
+	REPT 19
+	move.l d0,(a6)+       ; Line adress (4) + pixel shift (1->2)
+	move.l a0,(a6)+       ; Palette pointer (4)
+	add.l #224<<8,d0
+	ENDR
+	rts
+
+
 ; MARK: Update DL
 ; Various types of contents in a Display List:
 ; - Line adress (4) + pixel shift (1->2)
@@ -596,6 +665,8 @@ UpdateDisplayList
 	lea 32(a0),a0
 	add.l #160<<8,d0
 	ENDR
+
+	jsr UpdateDisplayListWithSommarhack
 	rts
 	
 
@@ -934,7 +1005,8 @@ _patch_color_green_white = *+2
 	move.l (a3)+,d0                 ; 3 Screen value
 	move.l (a3)+,a4                 ; 3 Palette
 
-	move.l #scene_sat_logo+8,a0			; 3
+_patch_tvlogo = *+2
+	move.l #tvlogo_black+8,a0			; 3
 	move.l a0,d1					; 1
 	lsl.l #8,d1                     ; 6
 
@@ -944,7 +1016,7 @@ _patch_color_green_white = *+2
 	; --------------------------------------------------
 	; Code for scanlines 229-272
 	; --------------------------------------------------
-	REPT 44-23
+	REPT 21
     lea $ffff8240.w,a5    			; 2 palette
 	move.l (a4)+,(a5)+              ; 5
 	move.l (a4)+,(a5)+              ; 5
@@ -967,15 +1039,9 @@ _patch_color_green_white = *+2
 	move.l (a3)+,d0                 ; 3 Screen value
 	move.l (a3)+,a4                 ; 3 Palette
 
-	pause 22
-
-	movep.l d1,-5(a6)		    	; 6 $ffff8205/07/09/0B
-	nop
+	pause 33-8
 	move.b #1,$ffff8260.w   		; 4 Medium resolution
-	move.b #0,91(a6)				; 4 $ffff8265
-	add.l #92<<8,d1                ; 4
-
-	pause 13 ;-4
+	pause 17+8
 		;move.w #$700,$ffff8246.w  ; 4 =============
 
 		move.w	d7,$ffff820a.w			;3 Right border
@@ -1177,6 +1243,35 @@ MessageTickerLightModeDone		dc.b 1
 								dc.b 1,"Done!",0
 								dc.b 1,"What's next?",0
 
+MessageNeedTVLogo		  	dc.b 1
+							dc.b 1,126,"I think we need a logo for!"
+							dc.b 1,126,"the TV channel, like at the"
+							dc.b 1,126,"bottom right?"
+							dc.b 1
+							dcb.b 30,127
+							dc.b 0
+
+MessageTVLogoPlaceholder		dc.b 1
+								dc.b 1,"There?",0
+
+MessageTVLogoCorrect		dc.b 1
+							dc.b 1,126,"Exactly. I need something"
+							dc.b 1,126,"demoscene related. Suggestions?"
+							dc.b 1
+							dcb.b 30,127
+							dc.b 0
+
+MessageSuggestSceneSat		dc.b 1
+							dc.b 1,"What about that one?",0
+
+MessageTVLogoCool			dc.b 1
+							dc.b 1,126,"Yeah, that would work..."
+							dc.b 1,126,"Hope they are not going to"
+							dc.b 1,126,"YMCA me for copyright abuse!"
+							dc.b 1
+							dcb.b 30,127
+							dc.b 0
+
 	even
 
 
@@ -1187,7 +1282,6 @@ MessageTickerLightModeDone		dc.b 1
 	even
 
 	FILE "export\black_ticker.bin",black_ticker                     ; Black "ticker" image
-	FILE "export\scenesat_logo_black.bin",scenesat_logo_black       ; Black tv canal image
 	FILE "export\c64_charset_converted.pi3",c64_charset_128x128     ; C64 character set
 
 
@@ -1222,9 +1316,13 @@ MessageTickerLightModeDone		dc.b 1
 ; The medium resolution file panel on the right
 	FILE "export\chat_panel.bin",chat_panel				                            ; Max 26 lines of text	
 
+; The bottom right logo
+	FILE "export\tvlogo_black.bin",tvlogo_black       				; TV canal: all black
+	FILE "export\tvlogo_blank.bin",tvlogo_blank       				; TV canal: White background
+	FILE "export\tvlogo_placeholder.bin",tvlogo_placeholder			; TV canal: Placeholder
+	FILE "export\tvlogo_scenesat.bin",tvlogo_scenesat     			; TV canal: SceneSat logo
 
-scene_sat_logo
-	incbin "export\scenesat_logo.bin"
+	FILE "export\sommarhack_tiny_logo.bin",sommarhack_tiny_logo		; TV canal: SceneSat logo
 
 ; 649x69 = 160*60 = 11040
 ; 11048 bytes

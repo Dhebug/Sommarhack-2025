@@ -12,8 +12,6 @@ echo %ESC%[1mBuild started: %date% %time%%ESC%[0m
 ::ECHO ON
 md export
 bin\PictConv.exe -m1 -f4 -o7 -p1 data\sommarhack_logo.png export\sommarhack_logo.bin
-bin\PictConv.exe -m1 -f4 -o7 -p1 data\scenesat_logo.png export\scenesat_logo.bin
-bin\PictConv.exe -m1 -f4 -o7 -p1 data\scenesat_logo_black.png export\scenesat_logo_black.bin
 
 bin\PictConv.exe -m1 -f2 -o2 data\c64_charset.png export\c64_charset_converted.pi3
 
@@ -39,11 +37,19 @@ bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_content_mixed_resolution.png export\n
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_content_weather.png export\news_content_weather.bin
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_content_dbug_attending.png export\news_content_dbug_attending.bin
 
+bin\PictConv.exe -m1 -f0 -o7 -p1 data\black_ticker.png export\black_ticker.bin
+
 :: Medium resolution content on the right side
 bin\PictConv.exe -m1 -f4 -o7 -p1 data\chat_panel.png export\chat_panel.bin
+bin\PictConv.exe -m1 -f4 -o7 -p1 data\tvlogo_black.png export\tvlogo_black.bin
+bin\PictConv.exe -m1 -f4 -o7 -p1 data\tvlogo_blank.png export\tvlogo_blank.bin
+bin\PictConv.exe -m1 -f4 -o7 -p1 data\tvlogo_placeholder.png export\tvlogo_placeholder.bin
+bin\PictConv.exe -m1 -f4 -o7 -p1 data\tvlogo_scenesat.png export\tvlogo_scenesat.bin
+
+:: Bottom bar
+bin\PictConv.exe -m1 -f0 -o7 -p1 data\sommarhack_tiny_logo.png export\sommarhack_tiny_logo.bin
 
 
-bin\PictConv.exe -m1 -f0 -o7 -p1 data\black_ticker.png export\black_ticker.bin
 
 
 :: Works: PictConv - Version 1.000 - (Jul  1 2024 / 19:59:32) - This program is a part of the OSDK (http://www.osdk.org)
