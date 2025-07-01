@@ -318,9 +318,12 @@ Initialization
 	move.l #sommarhack_multipalette,CurrentImage
 
 	; Initialize the text
-	move.l #chat_panel+8+20,message_screen_ptr
-	move.l #92,message_screen_width
-	move.l #0,message_screen_offset
+	move.l #chat_panel+8+20,message_screen_base_ptr
+	move.l message_screen_base_ptr,message_screen_ptr
+	move.w #92,message_screen_width
+	move.w #0,message_screen_offset
+	move.w #24,message_max_lines   
+	move.w #0,message_cur_lines
 
 	; Initialize the music	 
  ifne enable_music
@@ -444,7 +447,7 @@ DemoSequence
 
 	WAIT 50*2
 
-	PRINT_MESSAGE MessageTVStyle 	; TV Style!
+	PRINT_MESSAGE MessageTVStyle 	; TV news Style!
 
 	WAIT 50*2
 
@@ -452,37 +455,40 @@ DemoSequence
 
 	WAIT 50*2
 
-	PRINT_MESSAGE MessageNewsTicker ; News ticker
+	PRINT_MESSAGE MessageNewsTicker ; I'd like a news ticker at the bottom
 
 	WAIT 50*2
 
 	WAIT_VBL
 	SET_NEWS_CONTENT news_content_placeholder	; Show the placeholder ticker content box
 
-	PRINT_MESSAGE MessageTickerPlaceholder 	; News ticker
+	WAIT 50*1
+	PRINT_MESSAGE MessageTickerPlaceholder 	; There you go, is it what you wanted?
 
 	WAIT 50*2
 
 	PRINT_MESSAGE MessageNewsTickerAlmost 	; Ticker almost
 
 	WAIT 50*2
-	WAIT 50*2
-	WAIT 50*2
-
-	WAIT 50*2
-
-	; Show the "Place holder" news ticker
+	
 	WAIT_VBL
-	SET_NEWS_TITLE news_title_placeholder
+	SET_NEWS_TITLE news_title_placeholder    ; Show the "Place holder" news ticker
+
+	WAIT 50*1
+	PRINT_MESSAGE MessageTickerTitlePlaceholder 	; Like that?
 
 	WAIT 50*2
 
-	; Show the "Encounter sales" news ticker
-	WAIT_VBL
-	SET_NEWS_TITLE news_title_breaking_news
-	SET_NEWS_CONTENT news_content_encounter
+	PRINT_MESSAGE MessageNewsTickerPerfect 		; Perfect! But need weather content
 
 	WAIT 50*2
+
+	PRINT_MESSAGE MessageTickerAccessingWeather 		; Accessing weather
+
+	WAIT 50*2
+	PRINT_MESSAGE MessageTickerWeatherDone 		; Weather done
+
+	WAIT 50*1
 
 	; Enable the weather forecast ticker
 	WAIT_VBL
@@ -491,9 +497,9 @@ DemoSequence
 
 	WAIT 50*2
 
-	WAIT_VBL
-	bsr PrintMessage2   ; Software:
-	;endc
+	PRINT_MESSAGE MessageNewsSwitchColors 		; Awesome! Switch to light mode please
+
+	WAIT 50*2
 
 	; Bring the background to life
 	lea semi_black_palette,a0 			; 100% black palette
@@ -501,11 +507,17 @@ DemoSequence
 	move.l #$0f0000f0,_patch_color_red_green
 	move.l #$00f00fff,_patch_color_green_white
 
-	WAIT 50*2
+	WAIT 50*1
+	PRINT_MESSAGE MessageTickerLightModeDone 	; Done!
 
+	WAIT 50*5
+
+	; Show the "Encounter sales" news ticker
 	WAIT_VBL
-	bsr PrintMessage2   ; Software:
+	SET_NEWS_TITLE news_title_breaking_news
+	SET_NEWS_CONTENT news_content_encounter
 
+	WAIT 50*2
 
 	; Enable the main distorter event
 	move.l #sommarhack_multipalette,displayList_image
@@ -991,7 +1003,7 @@ _patch_update = *+2
 ; message_source_ptr = message
 ; message_screen_ptr = scanline screen location
 PrintMessage2
-	movem.l d1/d2/d3/d4/d5/d6/a0/a1/a2/a3,-(sp)
+	movem.l d1/d2/d3/d4/d5/d6/d7/a0/a1/a2/a3/a4,-(sp)
 
 	move.l message_source_ptr,a0
 
@@ -1008,9 +1020,37 @@ print_message_loop
 
 	cmp #1,d1
 	bne .no_carriage_return
-	move.l message_screen_width,d1
+
+	move message_max_lines,d3
+	cmp.w message_cur_lines,d3
+	bne .new_line
+.scroll_screen
+	move.l message_screen_base_ptr,a4
+	
+	move.w message_screen_width,d3         ; Width in bytes
+	lsl #3,d3                              ; Times 8 scanlines per character
+
+	move.l a4,a3
+	add.w d3,a3
+
+	move message_max_lines,d7
+	add #2,d7
+	mulu d7,d3              			   ; Times number of lines to scroll
+	lsr #2,d3                              ; Divide by 4
+
+	sub #1,d3
+.loop_scroll
+	move.l (a3)+,(a4)+                     ; Copy up
+	dbra d3,.loop_scroll
+	bra .end_newline
+
+.new_line
+	add.w #1,message_cur_lines
+	moveq #0,d1
+	move.w message_screen_width,d1
 	lsl.l #3,d1
 	add.l d1,message_screen_ptr
+.end_newline	
 	move.l message_screen_ptr,a1
 	move.l #$00030001,d6
 
@@ -1044,7 +1084,7 @@ var set 0
 	eor.b d4,d3
 	move.b d3,(a3)
 	move.b d3,(a3,d5.l)
-	add.l message_screen_width,a3
+	add.w message_screen_width,a3
 var set var+1  
 	endr 
 	add.w d6,a1
@@ -1059,7 +1099,7 @@ PrintMessageCallback
 
 print_message_end
 	move.l a0,message_source_ptr
-	movem.l (sp)+,d1/d2/d3/d4/d5/d6/a0/a1/a2/a3
+	movem.l (sp)+,d1/d2/d3/d4/d5/d6/d7/a0/a1/a2/a3/a4
 	rts
 
 ; Max 26 lines of text
@@ -1107,6 +1147,35 @@ MessageNewsTickerAlmost		dc.b 1
 							dc.b 1
 							dcb.b 30,127
 							dc.b 0
+
+MessageTickerTitlePlaceholder	dc.b 1
+								dc.b 1,"Like that?",0
+
+MessageNewsTickerPerfect	dc.b 1
+							dc.b 1,126,"Yes, perfect! But it needs"
+							dc.b 1,126,"some actual content. Maybe"
+							dc.b 1,126,"the weather forecast?"
+							dc.b 1
+							dcb.b 30,127
+							dc.b 0
+
+MessageTickerAccessingWeather	dc.b 1
+								dc.b 1,"<Accessing weather database>",0
+
+MessageTickerWeatherDone		dc.b 1
+								dc.b 1,"Done!",0
+
+MessageNewsSwitchColors  	dc.b 1
+							dc.b 1,126,"Awesome!"
+							dc.b 1,126,"Before we continue, could"
+							dc.b 1,126,"you switch to light mode?"
+							dc.b 1
+							dcb.b 30,127
+							dc.b 0
+
+MessageTickerLightModeDone		dc.b 1
+								dc.b 1,"Done!",0
+								dc.b 1,"What's next?",0
 
 	even
 
@@ -1219,10 +1288,14 @@ DisplayList		ds.b 276*(4+4)	; Screen Pointer + Pixel offset + Palette adress, fo
 
 	even
 
-message_screen_offset 	ds.l 1
-message_screen_width	ds.l 1  
+message_screen_base_ptr ds.l 1
 message_screen_ptr		ds.l 1
 message_source_ptr      ds.l 1
+message_screen_offset 	ds.w 1
+message_screen_width	ds.w 1  
+message_max_lines       ds.w 1
+message_cur_lines       ds.w 1
+
 
 SineOffsets		ds.l 512*2
 
