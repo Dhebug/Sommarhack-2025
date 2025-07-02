@@ -317,6 +317,14 @@ Initialization
 	lea tvlogo_black+8,a0
 	jsr PatchSommarhackLogo
 
+	; Depack samples
+	; Keyclick
+	lea packed_chatroom_sample_start,a0
+	lea chatroom_sample_start,a1
+	move.l #packed_chatroom_sample_end-packed_chatroom_sample_start,d0
+	bsr DepackDelta
+
+
 	; Set the current image
 	move.l #sommarhack_multipalette,CurrentImage
 
@@ -395,15 +403,19 @@ SET_NEWS_CONTENT macro
 	endm
 
 
-PRINT_MESSAGE macro
+PRINT_AI_MESSAGE macro
+	move.l #DoNothing,PrintMessageCallback
 	move.l #\1,message_source_ptr
 	bsr PrintMessage2
 	endm
 
-PRINT_NEXT macro
-	jsr WaitVbl
+
+PRINT_USER_MESSAGE macro
+	move.l #SlowClick,PrintMessageCallback
+	move.l #\1,message_source_ptr
 	bsr PrintMessage2
 	endm
+
 
 WAIT macro
 	move.w #\1,d0
@@ -423,28 +435,28 @@ DemoSequence
 	ifne 1
 	WAIT 50*2
 
-	PRINT_MESSAGE MessageWelcome    ; Welcome to DemoVibe
-	PRINT_MESSAGE MessagePrompt    	; Please enter your query
+	PRINT_AI_MESSAGE MessageWelcome    	; Welcome to DemoVibe
+	PRINT_AI_MESSAGE MessagePrompt    	; Please enter your query
 
 	WAIT 50*2
 
-	PRINT_MESSAGE MessageNeedHelp 	; I need help with a demo for Sommarhack
+	PRINT_USER_MESSAGE MessageNeedHelp 	; I need help with a demo for Sommarhack
 
 	WAIT 50*2
 
-	PRINT_MESSAGE MessageDemoType 	; What's your idea?
+	PRINT_AI_MESSAGE MessageDemoType 	; What's your idea?
 
 	WAIT 50*2
 
-	PRINT_MESSAGE MessageTVStyle 	; TV news Style!
+	PRINT_USER_MESSAGE MessageTVStyle 	; TV news Style!
 
 	WAIT 50*2
 
-	PRINT_MESSAGE MessageGreatIdea 	; Great idea
+	PRINT_AI_MESSAGE MessageGreatIdea 	; Great idea
 
 	WAIT 50*2
 
-	PRINT_MESSAGE MessageNewsTicker ; I'd like a news ticker at the bottom
+	PRINT_USER_MESSAGE MessageNewsTicker ; I'd like a news ticker at the bottom
 
 	WAIT 50*2
 
@@ -452,11 +464,11 @@ DemoSequence
 	SET_NEWS_CONTENT news_content_placeholder	; Show the placeholder ticker content box
 
 	WAIT 50*1
-	PRINT_MESSAGE MessageTickerPlaceholder 	; There you go, is it what you wanted?
+	PRINT_AI_MESSAGE MessageTickerPlaceholder 	; There you go, is it what you wanted?
 
 	WAIT 50*2
 
-	PRINT_MESSAGE MessageNewsTickerAlmost 	; Ticker almost
+	PRINT_USER_MESSAGE MessageNewsTickerAlmost 	; Ticker almost
 
 	WAIT 50*2
 	
@@ -464,18 +476,18 @@ DemoSequence
 	SET_NEWS_TITLE news_title_placeholder    ; Show the "Place holder" news ticker
 
 	WAIT 50*1
-	PRINT_MESSAGE MessageTickerTitlePlaceholder 	; Like that?
+	PRINT_AI_MESSAGE MessageTickerTitlePlaceholder 	; Like that?
 
 	WAIT 50*2
 
-	PRINT_MESSAGE MessageNewsTickerPerfect 		; Perfect! But need weather content
+	PRINT_USER_MESSAGE MessageNewsTickerPerfect 		; Perfect! But need weather content
 
 	WAIT 50*2
 
-	PRINT_MESSAGE MessageTickerAccessingWeather 		; Accessing weather
+	PRINT_AI_MESSAGE MessageTickerAccessingWeather 		; Accessing weather
 
 	WAIT 50*2
-	PRINT_MESSAGE MessageTickerWeatherDone 		; Weather done
+	PRINT_AI_MESSAGE MessageTickerWeatherDone 		; Weather done
 
 	WAIT 50*1
 
@@ -486,7 +498,7 @@ DemoSequence
 
 	WAIT 50*2
 
-	PRINT_MESSAGE MessageNewsSwitchColors 		; Awesome! Switch to light mode please
+	PRINT_USER_MESSAGE MessageNewsSwitchColors 		; Awesome! Switch to light mode please
 
 	WAIT 50*2
 	endc
@@ -500,13 +512,13 @@ DemoSequence
 
 	ifne 1
 	WAIT 50*1
-	PRINT_MESSAGE MessageTickerLightModeDone 	; Done!
+	PRINT_AI_MESSAGE MessageTickerLightModeDone 	; Done!
 
 	WAIT 50*2
-	PRINT_MESSAGE MessageNeedTVLogo 	; Need TV Logo
+	PRINT_USER_MESSAGE MessageNeedTVLogo 	; Need TV Logo
 
 	WAIT 50*2
-	PRINT_MESSAGE MessageTVLogoPlaceholder 	; Done!
+	PRINT_AI_MESSAGE MessageTVLogoPlaceholder 	; Done!
 
 	WAIT 50*1
 	move.l #tvlogo_placeholder+8,_patch_tvlogo
@@ -514,19 +526,24 @@ DemoSequence
 	jsr PatchSommarhackLogo
 
 	WAIT 50*2
-	PRINT_MESSAGE MessageTVLogoCorrect 	; Should be demoscene related
+	PRINT_USER_MESSAGE MessageTVLogoCorrect 	; Should be demoscene related
 
 	WAIT 50*2
-	PRINT_MESSAGE MessageSuggestSceneSat 	; What about that one? (scene sat)
+	PRINT_AI_MESSAGE MessageSuggestSceneSat 	; What about that one? (scene sat)
 
 	WAIT 50*1
 	move.l #tvlogo_scenesat+8,_patch_tvlogo
 	lea tvlogo_scenesat+8,a0
 	jsr PatchSommarhackLogo
 
+	WAIT 50*2
+	PRINT_USER_MESSAGE MessageTVLogoCool 	; Hope they will not sue me
 
 	WAIT 50*2
-	PRINT_MESSAGE MessageTVLogoCool 	; Hope they will not sue me
+	PRINT_AI_MESSAGE MessageDoYouWantToChange 	; Do you want to change i?
+
+	WAIT 50*2
+	PRINT_USER_MESSAGE MessageNaAddLogo 	; Nah, just add logo
 
 	WAIT 50*5
 	endc 
@@ -1158,7 +1175,7 @@ var set var+1
 	swap d6
 
 	opt o-
-PrintMessageCallback
+PrintMessageCallback = *+2
 	jsr DoNothing
 	opt o+
 	bra print_message_loop
@@ -1168,109 +1185,265 @@ print_message_end
 	movem.l (sp)+,d1/d2/d3/d4/d5/d6/d7/a0/a1/a2/a3/a4
 	rts
 
+
+
+
+; RND(n), 32 bit Galois version. make n=0 for 19th next number in
+; sequence or n<>0 to get 19th next number in sequence after seed n.  
+; This version of the PRNG uses the Galois method and a sample of
+; 65536 bytes produced gives the following values.
+;
+; Entropy = 7.997442 bits per byte
+; Optimum compression would reduce these 65536 bytes by 0 percent
+;
+; Chi square distribution for 65536 samples is 232.01, and
+; randomly would exceed this value 75.00 percent of the time
+;
+; Arithmetic mean value of data bytes is 127.6724, 127.5 = random
+; Monte Carlo value for Pi is 3.122871269, error 0.60 percent
+; Serial correlation coefficient is -0.000370, uncorrelated = 0.0
+;
+; Uses d0/d1/d2
+NextPRN
+	moveq #$AF-$100,d1   ; set EOR value
+	moveq #18,d2     ; do this 19 times
+	move.l Prng32,d0   ; get current 
+.ninc0
+	add.l d0,d0      ; shift left 1 bit
+	bcc.s .ninc1     ; branch if bit 32 not set
+
+	eor.b d1,d0      ; do galois LFSR feedback
+.ninc1
+	dbra d2,.ninc0     ; loop
+
+	move.l d0,Prng32   ; save back to seed word
+	rts
+
+
+
+IRC_MASK_RANDOM_INPUT	equ 3		; Power of two-1
+IRC_MIN_DELAY_INPUT		equ 1
+
+SlowClick
+	movem.l d0-a6,-(sp)
+
+	bsr PlayRandomClickSound
+
+	bsr NextPRN
+	and #IRC_MASK_RANDOM_INPUT,d0
+	add #IRC_MIN_DELAY_INPUT,d0
+	bsr WaitDelay
+
+	movem.l (sp)+,d0-a6
+	rts
+
+
+PlayRandomClickSound
+	movem.l d0-a6,-(sp)
+
+	bsr NextPRN
+	and #3,d0
+	add d0,d0
+	add d0,d0
+	lea TableKeyboardSounds,a2
+	add d0,a2
+
+	lea chatroom_sample_start,a0
+	move.l a0,a1
+	add (a2)+,a0
+	add (a2)+,a1
+
+	; StartReplay 
+	; Audio DMA issues here:
+	; http://atari-ste.anvil-soft.com/html/devdocu4.htm 
+	; a0=sample start
+	; a1=sample end
+	; return d0=approximate duration in VBLs
+	move.l a1,d0
+	sub.l a0,d0        ; Size in bytes
+	lsr.l #8,d0        ; /256 (12517 khz=12517 bytes per second=250.34 bytes per VBL)
+
+	move.l a0,d1       ; Start adress
+
+	lea $ffff8900.w,a0
+
+	move.b d1,$7(a0)     ; $ffff8907.w Dma start adress (low)
+	lsr.l #8,d1
+	move.b d1,$5(a0)     ; $ffff8905.w Dma start adress (mid)
+	lsr.l #8,d1
+	move.b d1,$3(a0)     ; $ffff8903.w Dma start adress (high)
+
+	move.l a1,d1       ; End adress
+	move.b d1,$13(a0)      ; $ffff8913.w Dma end adress (low)
+	lsr.l #8,d1
+	move.b d1,$11(a0)      ; $ffff8911.w Dma end adress (mid)
+	lsr.l #8,d1
+	move.b d1,$f(a0)     ; $ffff890f.w Dma end adress (high)
+
+	move.b #1+128,$21(a0)    ; $ffff8921.w DMA mode (128=mono) (0=6258,1=12517,2=25033,3=50066)
+	move.b #1,$1(a0)     ; $ffff8901.w DMA control (0=stop, 1=play once, 2=loop)
+
+	movem.l (sp)+,d0-a6
+	rts 
+ 
+
+; a0=Source (compressed) data
+; a1=Destination buffer 
+; d0.l=source sample size
+DepackDelta
+	movem.l d0/d1/d2/a2,-(sp)
+
+	subq.l #1,d0
+
+	lea DepackDeltaTable,a2
+	move.b (a0)+,d1	; Start value
+	eor.b #$80,d1		; Sign change
+	move.b d1,(a1)+
+
+	moveq #0,d2
+.loop 
+	REPT 4
+	move.b (a0)+,d2	; Fetch two nibbles
+
+	add.b (a2,d2),d1
+	move.b d1,(a1)+
+
+	lsr #4,d2
+	add.b (a2,d2),d1
+	move.b d1,(a1)+
+	ENDR
+
+	subq.l #4,d0
+	bpl.s .loop
+
+	movem.l (sp)+,d0/d1/d2/a2
+	rts
+
+
 ; Max 26 lines of text
-MessageWelcome  			dc.b "Welcome to AIScene'",255,"DemoVibe",255,0
-MessagePrompt   			dc.b 1,"Please enter your query:",0
+MessageWelcome  			dc.b "Welcome to AIScene'",255,"DemoVibe",255
+							dc.b 0
+
+MessagePrompt   			dc.b 1,"Please enter your query:"
+							dc.b 0
 
 MessageNeedHelp 			dc.b 1
 							dc.b 1,126,"I need help with a demo for the"
 							dc.b 1,126,"Sommarhack 2025 demoparty!"
-							dc.b 1
-							dcb.b 30,127
 							dc.b 0
 
 MessageDemoType 			dc.b 1
+							dcb.b 30,127
+							dc.b 1
 							dc.b 1,"I can help with that."
-							dc.b 1,"What did you have in mind?",0
+							dc.b 1,"What did you have in mind?"
+							dc.b 0
 
 MessageTVStyle  			dc.b 1
 							dc.b 1,126,"I was thinking of something"
 							dc.b 1,126,"like a live TV newscast"
-							dc.b 1
-							dcb.b 30,127
 							dc.b 0
 
 MessageGreatIdea 			dc.b 1
+							dcb.b 30,127
+							dc.b 1
 							dc.b 1,"Should be easy!"
-							dc.b 1,"Just tell me what you want :)",0
+							dc.b 1,"Just tell me what you want :)"
+							dc.b 0
 
 MessageNewsTicker  			dc.b 1
 							dc.b 1,126,"I'd like some kind of band"
 							dc.b 1,126,"at the bottom showing various"
 							dc.b 1,126,"bits of information"
-							dc.b 1
-							dcb.b 30,127
 							dc.b 0
 
 MessageTickerPlaceholder	dc.b 1
+							dcb.b 30,127
+							dc.b 1
 							dc.b 1,"There you go!"
-							dc.b 1,"Is it what you had in mind?",0
+							dc.b 1,"Is it what you had in mind?"
+							dc.b 00
 
 MessageNewsTickerAlmost		dc.b 1
 							dc.b 1,126,"Almost! It needs a title"
 							dc.b 1,126,"section as well, not just"
 							dc.b 1,126,"content"
-							dc.b 1
-							dcb.b 30,127
 							dc.b 0
 
 MessageTickerTitlePlaceholder	dc.b 1
-								dc.b 1,"Like that?",0
+								dcb.b 30,127
+								dc.b 1
+								dc.b 1,"Like that?"
+								dc.b 00
 
 MessageNewsTickerPerfect	dc.b 1
 							dc.b 1,126,"Yes, perfect! But it needs"
 							dc.b 1,126,"some actual content. Maybe"
 							dc.b 1,126,"the weather forecast?"
-							dc.b 1
-							dcb.b 30,127
 							dc.b 0
 
 MessageTickerAccessingWeather	dc.b 1
-								dc.b 1,"<Accessing weather database>",0
+								dcb.b 30,127
+								dc.b 1
+								dc.b 1,"<Accessing weather database>"
+								dc.b 0
 
 MessageTickerWeatherDone		dc.b 1
-								dc.b 1,"Done!",0
+								dc.b 1,"Done!"
+								dc.b 0
 
 MessageNewsSwitchColors  	dc.b 1
 							dc.b 1,126,"Awesome!"
 							dc.b 1,126,"Before we continue, could"
 							dc.b 1,126,"you switch to light mode?"
-							dc.b 1
-							dcb.b 30,127
 							dc.b 0
 
 MessageTickerLightModeDone		dc.b 1
-								dc.b 1,"Done!",0
-								dc.b 1,"What's next?",0
+								dcb.b 30,127
+								dc.b 1
+								dc.b 1,"Done!"
+								dc.b 1,"What's next?"
+								dc.b 00
 
 MessageNeedTVLogo		  	dc.b 1
 							dc.b 1,126,"I think we need a logo for!"
 							dc.b 1,126,"the TV channel, like at the"
 							dc.b 1,126,"bottom right?"
-							dc.b 1
-							dcb.b 30,127
 							dc.b 0
 
 MessageTVLogoPlaceholder		dc.b 1
-								dc.b 1,"There?",0
+								dcb.b 30,127
+								dc.b 1
+								dc.b 1,"There?"
+								dc.b 0
 
 MessageTVLogoCorrect		dc.b 1
 							dc.b 1,126,"Exactly. I need something"
 							dc.b 1,126,"demoscene related. Suggestions?"
-							dc.b 1
-							dcb.b 30,127
 							dc.b 0
 
 MessageSuggestSceneSat		dc.b 1
-							dc.b 1,"What about that one?",0
+							dcb.b 30,127
+							dc.b 1
+							dc.b 1,"What about that one?"
+							dc.b 00
 
 MessageTVLogoCool			dc.b 1
 							dc.b 1,126,"Yeah, that would work..."
 							dc.b 1,126,"Hope they are not going to"
 							dc.b 1,126,"YMCA me for copyright abuse!"
-							dc.b 1
-							dcb.b 30,127
 							dc.b 0
+
+MessageDoYouWantToChange	dc.b 1
+							dcb.b 30,127
+							dc.b 1
+							dc.b 1,"Want me to change it?"
+							dc.b 0
+
+MessageNaAddLogo			dc.b 1
+							dc.b 1,126,"Nahh, let's just add a logo"
+							dc.b 0
+
 
 	even
 
@@ -1339,7 +1512,48 @@ sine_255				; 16 bits, unsigned between 00 and 127
 Music
 	incbin "data\SOS.SND"
 
+ even
 
+; Unpacked:  9536  Packed:    4769
+packed_chatroom_sample_start 
+	incbin "export\keyboard.dlt"
+packed_chatroom_sample_end
+
+ even
+
+Prng32	        				dc.l $12345678			; random number store
+
+TableKeyboardSounds
+	dc.w 0,1598
+	dc.w 1598,2696
+	dc.w 2696,3922
+	dc.w 3922,5221
+	dc.w 5001,5889
+	dc.w 5861,7041
+	dc.w 6989,8293
+	dc.w 8281,9533
+
+DepackDeltaTable
+	REPT 16
+	dc.b -64
+	dc.b -32
+	dc.b -16
+	dc.b -8
+	dc.b -4
+	dc.b -2
+	dc.b -1
+	dc.b 0
+	dc.b 1
+	dc.b 2
+	dc.b 4
+	dc.b 8
+	dc.b 16
+	dc.b 32
+	dc.b 64
+	dc.b 127
+	ENDR
+
+	even
 
 NotASteMessage
  	dc.b 27,"E","This demo works only on STE or MegaSTE,",10,13,"with a color screen",0
@@ -1383,6 +1597,9 @@ screen_buffer			ds.b 160*276+256
 DisplayList_Top	ds.b 400*(4+4)	; Security crap
 DisplayList		ds.b 276*(4+4)	; Screen Pointer + Pixel offset + Palette adress, for each line
  				ds.b 400*(4+4)	; Security crap
+
+chatroom_sample_start			ds.b 9536
+chatroom_sample_end				ds.b 16				; Some padding to handle the alignment issues
 
 	even
 
