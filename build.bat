@@ -29,6 +29,7 @@ bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_title_placeholder.png export\news_tit
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_title_breaking_news.png export\news_title_breaking_news.bin
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_title_useful_information.png export\news_title_useful_information.bin
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_title_weather.png export\news_title_weather.bin
+bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_title_now_playing.png export\news_title_now_playing.bin
 
 :: News content entries
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_content_placeholder.png export\news_content_placeholder.bin
@@ -36,6 +37,7 @@ bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_content_encounter.png export\news_con
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_content_mixed_resolution.png export\news_content_mixed_resolution.bin
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_content_weather.png export\news_content_weather.bin
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_content_dbug_attending.png export\news_content_dbug_attending.bin
+bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_content_music_i_wonder.png export\news_content_music_i_wonder.bin
 
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\black_ticker.png export\black_ticker.bin
 
@@ -50,6 +52,9 @@ bin\PictConv.exe -m1 -f4 -o7 -p1 data\tvlogo_scenesat.png export\tvlogo_scenesat
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\sommarhack_tiny_logo.png export\sommarhack_tiny_logo.bin
 
 
+:: Music
+:: Vasm does not like spaces in subexpressions
+::bin\SongToAky.exe -reladr --labelPrefix "Main_" -spbyte "dc.b" -spword "dc.w" -sppostlbl ":" -spomt "data\music_intro.aks" "export\music_intro.s"
 
 
 :: Works: PictConv - Version 1.000 - (Jul  1 2024 / 19:59:32) - This program is a part of the OSDK (http://www.osdk.org)

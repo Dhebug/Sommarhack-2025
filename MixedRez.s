@@ -34,7 +34,7 @@
 ; $FF8264|byte |Horizontal scroll register without prefetch (0-15)   |R/W  (STe)
 ; $FF8265|byte |Horizontal scroll register with prefetch (0-15)      |R/W  (STe)
 
-enable_music  		equ 0
+enable_music  		equ 1
 
 alignment_marker 	equ $001     ; Green
 
@@ -223,8 +223,7 @@ SuperMain
 	bra.s	.loop_forever		; infinite wait loop
 exit                            ; We actual come back here from anywhere, including IRQs
   ifne enable_music
-	jsr Music+4                 ; Stop music
-	jsr YmSilent
+  	jsr StopMusic               ; Stop the current music and silence the YM if necessary
   endc
 
 	move.w #$2700,sr            ; We just don't care, just restore the stack pointer and we are all good
@@ -336,12 +335,6 @@ Initialization
 	move.w #24,message_max_lines   
 	move.w #0,message_cur_lines
 
-	; Initialize the music	 
- ifne enable_music
-	moveq #1,d0             ; Subtune number
-	jsr Music+0             ; Init music
-  endc
-
  	move.l #DummyHbl,$68.w			; Used in the timer to synchronize on the hbl interrupt
 	move.l #TimerAHandler,$134.w	; set the timer A handler
 	clr.b	$fffffa07.w				; iera
@@ -416,6 +409,14 @@ PRINT_USER_MESSAGE macro
 	bsr PrintMessage2
 	endm
 
+; PLAY_MUSIC file,tune
+PLAY_MUSIC macro
+ ifne enable_music
+	move.l #\1,a0                       ; File 
+	moveq #\2,d0             			; Subtune number (1 is the first song)
+	jsr SetCurrentMusic
+  endc
+	endm
 
 WAIT macro
 	move.w #\1,d0
@@ -432,7 +433,7 @@ DemoSequence
 	;move.l #$00000000,_patch_color_red_green
 	move.l #$00000000,_patch_color_green_white
 
-	ifne 1
+	ifne 1  ;------------------------------------------------------ bloc 1 -------------
 	WAIT 50*2
 
 	PRINT_AI_MESSAGE MessageWelcome    	; Welcome to DemoVibe
@@ -451,6 +452,10 @@ DemoSequence
 	PRINT_USER_MESSAGE MessageTVStyle 	; TV news Style!
 
 	WAIT 50*2
+	PLAY_MUSIC music_comic_bakery,1     ; Play "Comic Bakery"
+	PRINT_AI_MESSAGE MessagePlayMusic 	; Play music
+
+	WAIT 50*1
 
 	PRINT_AI_MESSAGE MessageGreatIdea 	; Great idea
 
@@ -510,7 +515,7 @@ DemoSequence
 	move.l #$00f00fff,_patch_color_green_white
 	move.l #tvlogo_blank+8,_patch_tvlogo
 
-	ifne 1
+	ifne 1  ;------------------------------------------------------ bloc 2 -------------
 	WAIT 50*1
 	PRINT_AI_MESSAGE MessageTickerLightModeDone 	; Done!
 
@@ -538,22 +543,27 @@ DemoSequence
 
 	WAIT 50*2
 	PRINT_USER_MESSAGE MessageTVLogoCool 	; Hope they will not sue me
+	endc 
 
 	WAIT 50*2
 	PRINT_AI_MESSAGE MessageDoYouWantToChange 	; Do you want to change i?
 
 	WAIT 50*2
-	PRINT_USER_MESSAGE MessageNaAddLogo 	; Nah, just add logo
-
-	WAIT 50*5
-	endc 
-
-	; Show the "Encounter sales" news ticker
-	WAIT_VBL
-	SET_NEWS_TITLE news_title_breaking_news
-	SET_NEWS_CONTENT news_content_encounter
+	PRINT_USER_MESSAGE MessageNaAddLogo 	; Nah, just add logo and change music
 
 	WAIT 50*2
+	PRINT_AI_MESSAGE MessagePlayingIWonder 	; Do you want to change i?
+
+	WAIT 50*1
+
+	PLAY_MUSIC music_i_wonder,1          			; Play "I wonder" - XiA
+	SET_NEWS_TITLE news_title_now_playing
+	SET_NEWS_CONTENT news_content_music_i_wonder
+
+	WAIT 50*2
+	PRINT_USER_MESSAGE MessageAddSommarhackLogo 	; I like it, let's continue!
+
+	WAIT 50*5
 
 	; Enable the main distorter event
 	move.l #sommarhack_multipalette,displayList_image
@@ -564,11 +574,19 @@ DemoSequence
 
 	; Loop the news ticker
 .loop_news
+	; Show the "Encounter sales" news ticker
+	WAIT_VBL
+	SET_NEWS_TITLE news_title_breaking_news
+	SET_NEWS_CONTENT news_content_encounter
+
+	WAIT 50*2
+
 	; Weather forecast for Sommarhack
 	WAIT_VBL
 	SET_NEWS_TITLE news_title_weather
 	SET_NEWS_CONTENT news_content_weather
 	move.l #oxygen_multipalette,displayList_image
+	PLAY_MUSIC music_oxygene,1          			; Play "Oxygene" - Jean-Michel jarre
 
 	WAIT 50*5
 
@@ -763,7 +781,8 @@ end_key
 
  ifne enable_music
 	;move.w #$700,$ffff8240.w
-	jsr Music+8             ; Play music
+_patch_music_play = *+2	
+	jsr DoNothing             ; By default we don't play anything, after that: Music+8             ; Play music
 	;move.w #$333,$ffff8240.w
  endc 
 
@@ -772,6 +791,34 @@ end_key
 	st flag_vbl
 	bclr.b	#5,$fffffa0f.w
 	rte
+
+; A0 = music file
+; d0 = subtune number (default is 1)
+; SNDH file:
+; +0 init
+; +4 stop
+; +8 play
+SetCurrentMusic
+ ifne enable_music
+	move.l a0,-(sp)
+	jsr (a0)                       ; Init music
+	move.l (sp)+,a0
+	add.l #4,a0
+	move.l a0,_patch_music_stop    ; Patch the stop music
+	add.l #4,a0
+	move.l a0,_patch_music_play    ; Patch the replay routine in the VBL
+ endc
+	rts
+
+StopMusic
+ ifne enable_music
+	move.l #DoNothing,a0
+	move.l a0,_patch_music_play    ; Patch the replay routine in the VBL
+_patch_music_stop = *+2  
+	jsr DoNothing             ; By default we don't play anything, after that: Music+8  
+	jsr YmSilent
+ endc
+	rts
 
 
 SetImage1
@@ -1187,7 +1234,7 @@ print_message_end
 
 
 
-
+; MARK: Random
 ; RND(n), 32 bit Galois version. make n=0 for 19th next number in
 ; sequence or n<>0 to get 19th next number in sequence after seed n.  
 ; This version of the PRNG uses the Galois method and a sample of
@@ -1237,7 +1284,7 @@ SlowClick
 	movem.l (sp)+,d0-a6
 	rts
 
-
+; MARK: Play sounds
 PlayRandomClickSound
 	movem.l d0-a6,-(sp)
 
@@ -1320,6 +1367,7 @@ DepackDelta
 	rts
 
 
+; MARK: Chat texts
 ; Max 26 lines of text
 MessageWelcome  			dc.b "Welcome to AIScene'",255,"DemoVibe",255
 							dc.b 0
@@ -1328,8 +1376,8 @@ MessagePrompt   			dc.b 1,"Please enter your query:"
 							dc.b 0
 
 MessageNeedHelp 			dc.b 1
-							dc.b 1,126,"I need help with a demo for the"
-							dc.b 1,126,"Sommarhack 2025 demoparty!"
+							dc.b 1,126,"I need help with a demo for"
+							dc.b 1,126,"the Sommarhack demoparty!"
 							dc.b 0
 
 MessageDemoType 			dc.b 1
@@ -1341,13 +1389,19 @@ MessageDemoType 			dc.b 1
 
 MessageTVStyle  			dc.b 1
 							dc.b 1,126,"I was thinking of something"
-							dc.b 1,126,"like a live TV newscast"
+							dc.b 1,126,"like a live TV newscast, but"
+							dc.b 1,126,"first, can you play some"
+							dc.b 1,126,"music?"
 							dc.b 0
 
-MessageGreatIdea 			dc.b 1
+MessagePlayMusic 			dc.b 1
 							dcb.b 30,127
 							dc.b 1
-							dc.b 1,"Should be easy!"
+							dc.b 1,"There you go, from the best!"
+							dc.b 0
+
+MessageGreatIdea			dc.b 1
+							dc.b 1,"For the TV idea, Should be easy!"
 							dc.b 1,"Just tell me what you want :)"
 							dc.b 0
 
@@ -1441,9 +1495,26 @@ MessageDoYouWantToChange	dc.b 1
 							dc.b 0
 
 MessageNaAddLogo			dc.b 1
-							dc.b 1,126,"Nahh, let's just add a logo"
+							dc.b 1,126,"Nahh, let's just add a logo."
+							dc.b 1
+							dc.b 1,126,"But, maybe change the music?"
+							dc.b 1,126,"I wonder... less well know?"
+							dc.b 1,126,"Something Swedish possible?"
 							dc.b 0
 
+MessagePlayingIWonder    	dc.b 1
+							dcb.b 30,127
+							dc.b 1
+							dc.b 1,"There you go: 'I wonder' by"
+							dc.b 1,"the Swedish musician known as"
+							dc.b 1,"Excellence in Art"
+							dc.b 0
+
+MessageAddSommarhackLogo	dc.b 1
+							dc.b 1,126,"I like it, let's continue."
+							dc.b 1
+							dc.b 1,126,"Maybe have a Sommarhack logo?"
+							dc.b 0
 
 	even
 
@@ -1465,6 +1536,7 @@ MessageNaAddLogo			dc.b 1
 	FILE "export\news_title_breaking_news.bin",news_title_breaking_news 			; News title: Breaking news
 	FILE "export\news_title_useful_information.bin",news_title_useful_information 	; News title: Useful information
 	FILE "export\news_title_weather.bin",news_title_weather 						; News title: Weather forecast
+	FILE "export\news_title_now_playing.bin",news_title_now_playing 				; News title: Now Playing
 
 
 ; MARK: News content entries
@@ -1475,6 +1547,7 @@ MessageNaAddLogo			dc.b 1
 	FILE "export\news_content_mixed_resolution.bin",news_content_mixed_resolution	; News content: Mixed-Resolution
 	FILE "export\news_content_weather.bin",news_content_weather						; News content: Weather
 	FILE "export\news_content_dbug_attending.bin",news_content_dbug_attending		; News content: Dbug attending
+	FILE "export\news_content_music_i_wonder.bin",news_content_music_i_wonder		; News content: Music - I Wonder
 
 
 ; MARK: Multipalette images
@@ -1496,6 +1569,11 @@ MessageNaAddLogo			dc.b 1
 	FILE "export\tvlogo_scenesat.bin",tvlogo_scenesat     			; TV canal: SceneSat logo
 
 	FILE "export\sommarhack_tiny_logo.bin",sommarhack_tiny_logo		; TV canal: SceneSat logo
+
+; Music tracks
+	FILE "data\music_comic_bakery.sndh",music_comic_bakery		; Music: "Comic Bakery" by Mad Max
+	FILE "data\music_i_wonder.sndh",music_i_wonder				; Music: "I wonder" by XiA
+	FILE "data\music_oxygene_4.sndh",music_oxygene				; Music: "Oxygene from Jean Michel Jarre" by XiA
 
 ; 649x69 = 160*60 = 11040
 ; 11048 bytes
