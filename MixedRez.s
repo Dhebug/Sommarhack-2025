@@ -34,7 +34,7 @@
 ; $FF8264|byte |Horizontal scroll register without prefetch (0-15)   |R/W  (STe)
 ; $FF8265|byte |Horizontal scroll register with prefetch (0-15)      |R/W  (STe)
 
-enable_music  		equ 1
+enable_music  		equ 0
 
 alignment_marker 	equ $001     ; Green
 
@@ -109,6 +109,61 @@ FILE macro
 \3
 	endc
 	even
+	endm
+
+
+
+; MARK: Defines
+SET_NEWS_TITLE macro
+	move.l #\1,news_title_palette
+	move.l #\1+32,news_title_bitmap
+	endm
+
+
+SET_NEWS_CONTENT macro
+	move.l #\1,news_content_palette
+	move.l #\1+32,news_content_bitmap
+	endm
+
+SET_CHANNEL_LOGO macro
+	lea \1+8,a0
+	jsr PatchChannelLogo
+	endm
+
+SET_BOTTOM_LOGO macro
+	lea \1+32,a0
+	jsr PatchBottomLogo
+	endm
+
+PRINT_AI_MESSAGE macro
+	move.l #DoNothing,PrintMessageCallback
+	move.l #\1,message_source_ptr
+	bsr PrintMessage2
+	endm
+
+
+PRINT_USER_MESSAGE macro
+	move.l #SlowClick,PrintMessageCallback
+	move.l #\1,message_source_ptr
+	bsr PrintMessage2
+	endm
+
+; PLAY_MUSIC file,tune
+PLAY_MUSIC macro
+ ifne enable_music
+	move.l #\1,a0                       ; File 
+	moveq #\2,d0             			; Subtune number (1 is the first song)
+	jsr SetCurrentMusic
+  endc
+	endm
+
+WAIT macro
+	move.w #\1,d0
+	jsr WaitDelay
+	endm
+
+WAIT_VBL macro
+	jsr WaitVbl
 	endm
 
 
@@ -313,8 +368,12 @@ Initialization
 	jsr InitializeEmptyDisplayList
 	jsr InitializeSineOffsets
 
-	lea tvlogo_black+8,a0
-	jsr PatchSommarhackLogo
+	;lea tvlogo_black+8,a0
+	;lea tvlogo_placeholder+8,a0
+	;lea tvlogo_scenesat+8,a0
+	;jsr PatchChannelLogo
+	SET_CHANNEL_LOGO tvlogo_black
+
 
 	; Depack samples
 	; Keyclick
@@ -382,50 +441,7 @@ InitializeSineOffsets
 	dbra d7,.loop	
 	rts
 
-; MARK: Defines
 
-SET_NEWS_TITLE macro
-	move.l #\1,news_title_palette
-	move.l #\1+32,news_title_bitmap
-	endm
-
-
-SET_NEWS_CONTENT macro
-	move.l #\1,news_content_palette
-	move.l #\1+32,news_content_bitmap
-	endm
-
-
-PRINT_AI_MESSAGE macro
-	move.l #DoNothing,PrintMessageCallback
-	move.l #\1,message_source_ptr
-	bsr PrintMessage2
-	endm
-
-
-PRINT_USER_MESSAGE macro
-	move.l #SlowClick,PrintMessageCallback
-	move.l #\1,message_source_ptr
-	bsr PrintMessage2
-	endm
-
-; PLAY_MUSIC file,tune
-PLAY_MUSIC macro
- ifne enable_music
-	move.l #\1,a0                       ; File 
-	moveq #\2,d0             			; Subtune number (1 is the first song)
-	jsr SetCurrentMusic
-  endc
-	endm
-
-WAIT macro
-	move.w #\1,d0
-	jsr WaitDelay
-	endm
-
-WAIT_VBL macro
-	jsr WaitVbl
-	endm
 
 ; MARK: Demo Sequence
 DemoSequence	
@@ -433,79 +449,83 @@ DemoSequence
 	;move.l #$00000000,_patch_color_red_green
 	move.l #$00000000,_patch_color_green_white
 
-	ifne 1  ;------------------------------------------------------ bloc 1 -------------
-	WAIT 50*2
+	ifne 0  ;------------------------------------------------------ bloc 1 -------------
+		WAIT 50*2
 
-	PRINT_AI_MESSAGE MessageWelcome    	; Welcome to DemoVibe
-	PRINT_AI_MESSAGE MessagePrompt    	; Please enter your query
+		PRINT_AI_MESSAGE MessageWelcome    	; Welcome to DemoVibe
+		PRINT_AI_MESSAGE MessagePrompt    	; Please enter your query
 
-	WAIT 50*2
+		WAIT 50*2
 
-	PRINT_USER_MESSAGE MessageNeedHelp 	; I need help with a demo for Sommarhack
+		PRINT_USER_MESSAGE MessageNeedHelp 	; I need help with a demo for Sommarhack
 
-	WAIT 50*2
+		WAIT 50*2
 
-	PRINT_AI_MESSAGE MessageDemoType 	; What's your idea?
+		PRINT_AI_MESSAGE MessageDemoType 	; What's your idea?
 
-	WAIT 50*2
+		WAIT 50*2
 
-	PRINT_USER_MESSAGE MessageTVStyle 	; TV news Style!
+		PRINT_USER_MESSAGE MessageTVStyle 	; TV news Style!
 
-	WAIT 50*2
-	PLAY_MUSIC music_comic_bakery,1     ; Play "Comic Bakery"
-	PRINT_AI_MESSAGE MessagePlayMusic 	; Play music
+		WAIT 50*2
+		PLAY_MUSIC music_comic_bakery,1     ; Play "Comic Bakery"
+		PRINT_AI_MESSAGE MessagePlayMusic 	; Play music
 
-	WAIT 50*1
+		WAIT 50*1
 
-	PRINT_AI_MESSAGE MessageGreatIdea 	; Great idea
+		PRINT_AI_MESSAGE MessageGreatIdea 	; Great idea
 
-	WAIT 50*2
+		WAIT 50*2
 
-	PRINT_USER_MESSAGE MessageNewsTicker ; I'd like a news ticker at the bottom
+		PRINT_USER_MESSAGE MessageNewsTicker ; I'd like a news ticker at the bottom
 
-	WAIT 50*2
+		WAIT 50*2
 
-	WAIT_VBL
-	SET_NEWS_CONTENT news_content_placeholder	; Show the placeholder ticker content box
+		WAIT_VBL
+		SET_NEWS_CONTENT news_content_placeholder	; Show the placeholder ticker content box
 
-	WAIT 50*1
-	PRINT_AI_MESSAGE MessageTickerPlaceholder 	; There you go, is it what you wanted?
+		WAIT 50*1
+		PRINT_AI_MESSAGE MessageTickerPlaceholder 	; There you go, is it what you wanted?
 
-	WAIT 50*2
+		WAIT 50*2
 
-	PRINT_USER_MESSAGE MessageNewsTickerAlmost 	; Ticker almost
+		PRINT_USER_MESSAGE MessageNewsTickerAlmost 	; Ticker almost
 
-	WAIT 50*2
-	
-	WAIT_VBL
-	SET_NEWS_TITLE news_title_placeholder    ; Show the "Place holder" news ticker
+		WAIT 50*2
+		
+		WAIT_VBL
+		SET_NEWS_TITLE news_title_placeholder    ; Show the "Place holder" news ticker
 
-	WAIT 50*1
-	PRINT_AI_MESSAGE MessageTickerTitlePlaceholder 	; Like that?
+		WAIT 50*1
+		PRINT_AI_MESSAGE MessageTickerTitlePlaceholder 	; Like that?
 
-	WAIT 50*2
+		WAIT 50*2
 
-	PRINT_USER_MESSAGE MessageNewsTickerPerfect 		; Perfect! But need weather content
+		PRINT_USER_MESSAGE MessageNewsTickerPerfect 		; Perfect! But need weather content
 
-	WAIT 50*2
+		WAIT 50*2
 
-	PRINT_AI_MESSAGE MessageTickerAccessingWeather 		; Accessing weather
+		PRINT_AI_MESSAGE MessageTickerAccessingWeather 		; Accessing weather
 
-	WAIT 50*2
-	PRINT_AI_MESSAGE MessageTickerWeatherDone 		; Weather done
+		WAIT 50*2
+		PRINT_AI_MESSAGE MessageTickerWeatherDone 		; Weather done
 
-	WAIT 50*1
+		WAIT 50*1
 
-	; Enable the weather forecast ticker
-	WAIT_VBL
-	SET_NEWS_TITLE news_title_weather
-	SET_NEWS_CONTENT news_content_weather
+		; Enable the weather forecast ticker
+		WAIT_VBL
+		SET_NEWS_TITLE news_title_weather
+		SET_NEWS_CONTENT news_content_weather
 
-	WAIT 50*2
+		WAIT 50*2
 
-	PRINT_USER_MESSAGE MessageNewsSwitchColors 		; Awesome! Switch to light mode please
+		PRINT_USER_MESSAGE MessageNewsSwitchColors 		; Awesome! Switch to light mode please
 
-	WAIT 50*2
+		WAIT 50*2
+	else
+		WAIT_VBL
+		SET_NEWS_TITLE news_title_weather
+		SET_NEWS_CONTENT news_content_weather
 	endc
 
 	; Bring the background to life
@@ -513,61 +533,108 @@ DemoSequence
 	jsr InitializeEmptyDisplayList
 	move.l #$0f0000f0,_patch_color_red_green
 	move.l #$00f00fff,_patch_color_green_white
-	move.l #tvlogo_blank+8,_patch_tvlogo
+	;move.l #tvlogo_blank+8,_patch_tvlogo
 
-	ifne 1  ;------------------------------------------------------ bloc 2 -------------
-	WAIT 50*1
-	PRINT_AI_MESSAGE MessageTickerLightModeDone 	; Done!
+	ifne 0  ;------------------------------------------------------ bloc 2 -------------
+		WAIT 50*1
+		PRINT_AI_MESSAGE MessageTickerLightModeDone 	; Done!
 
-	WAIT 50*2
-	PRINT_USER_MESSAGE MessageNeedTVLogo 	; Need TV Logo
+		WAIT 50*2
+		PRINT_USER_MESSAGE MessageNeedTVLogo 	; Need TV Logo
 
-	WAIT 50*2
-	PRINT_AI_MESSAGE MessageTVLogoPlaceholder 	; Done!
+		WAIT 50*2
+		PRINT_AI_MESSAGE MessageTVLogoPlaceholder 	; Done!
 
-	WAIT 50*1
-	move.l #tvlogo_placeholder+8,_patch_tvlogo
-	lea tvlogo_placeholder+8,a0
-	jsr PatchSommarhackLogo
+		WAIT 50*1
+		SET_CHANNEL_LOGO tvlogo_placeholder
 
-	WAIT 50*2
-	PRINT_USER_MESSAGE MessageTVLogoCorrect 	; Should be demoscene related
+		WAIT 50*2
+		PRINT_USER_MESSAGE MessageTVLogoCorrect 	; Should be demoscene related
 
-	WAIT 50*2
-	PRINT_AI_MESSAGE MessageSuggestSceneSat 	; What about that one? (scene sat)
+		WAIT 50*2
+		PRINT_AI_MESSAGE MessageSuggestSceneSat 	; What about that one? (scene sat)
 
-	WAIT 50*1
-	move.l #tvlogo_scenesat+8,_patch_tvlogo
-	lea tvlogo_scenesat+8,a0
-	jsr PatchSommarhackLogo
+		WAIT 50*1
+		SET_CHANNEL_LOGO tvlogo_scenesat
 
-	WAIT 50*2
-	PRINT_USER_MESSAGE MessageTVLogoCool 	; Hope they will not sue me
+		WAIT 50*2
+		PRINT_USER_MESSAGE MessageTVLogoCool 	; Hope they will not sue me
+	else
+		SET_CHANNEL_LOGO tvlogo_scenesat
 	endc 
 
-	WAIT 50*2
-	PRINT_AI_MESSAGE MessageDoYouWantToChange 	; Do you want to change i?
+
+	ifne 0  ;------------------------------------------------------ bloc 3 -------------
+		WAIT 50*2
+		PRINT_AI_MESSAGE MessageDoYouWantToChange 	; Do you want to change i?
+
+		WAIT 50*2
+		PRINT_USER_MESSAGE MessageNaAddLogo 	; Nah, just add logo and change music
+
+		WAIT 50*2
+		PRINT_AI_MESSAGE MessagePlayingIWonder 	; There you go, I wonder from XiA
+
+		WAIT 50*1
+
+		PLAY_MUSIC music_i_wonder,1          			; Play "I wonder" - XiA
+		SET_NEWS_TITLE news_title_now_playing
+		SET_NEWS_CONTENT news_content_music_i_wonder
+
+		WAIT 50*2
+		PRINT_USER_MESSAGE MessageAddSommarhackLogo 	; I like it, add a logo
+
+		WAIT 50*2
+		PRINT_AI_MESSAGE MessageSommarhackLogo 		; There you go, I wonder from XiA
+
+		WAIT 50*1
+		SET_BOTTOM_LOGO sommarhack_tiny_logo          ; Display the Sommarhack logo
+
+		WAIT 50*3
+		PRINT_USER_MESSAGE MessageNeedSomeEffect 	; Need some effect
+	else
+		PLAY_MUSIC music_i_wonder,1          			; Play "I wonder" - XiA
+		SET_NEWS_TITLE news_title_now_playing
+		SET_NEWS_CONTENT news_content_music_i_wonder
+		SET_BOTTOM_LOGO sommarhack_tiny_logo          ; Display the Sommarhack logo
+	endc
 
 	WAIT 50*2
-	PRINT_USER_MESSAGE MessageNaAddLogo 	; Nah, just add logo and change music
-
-	WAIT 50*2
-	PRINT_AI_MESSAGE MessagePlayingIWonder 	; Do you want to change i?
-
-	WAIT 50*1
-
-	PLAY_MUSIC music_i_wonder,1          			; Play "I wonder" - XiA
-	SET_NEWS_TITLE news_title_now_playing
-	SET_NEWS_CONTENT news_content_music_i_wonder
-
-	WAIT 50*2
-	PRINT_USER_MESSAGE MessageAddSommarhackLogo 	; I like it, let's continue!
+	PRINT_AI_MESSAGE MessageThinking 			; Thinking
 
 	WAIT 50*5
+	PRINT_AI_MESSAGE MessageSommarhackImage 	; Start by the sommarhack image
+
+	WAIT 50*2
+
+	; Enable the main distorter event
+	WAIT_VBL
+	move.w #0,image_offset_x
+	move.l #sommarhack_multipalette,displayList_image
+	move.l #UpdateDisplayListStaticImage,_patch_update
+	WAIT 50*5
+
+	move.w #8,image_offset_x
+	WAIT 50*5
+
+	move.w #16,image_offset_x
+	WAIT 50*5
+
+	move.w #24,image_offset_x
+	WAIT 50*5
+
+	move.w #32,image_offset_x
+	WAIT 50*5
+
+	WAIT 50*5
+	WAIT 50*5
+
+.wait_forever_now
+	bra .wait_forever_now
+
 
 	; Enable the main distorter event
 	move.l #sommarhack_multipalette,displayList_image
-	move.l #UpdateDisplayList,_patch_update
+	move.l #UpdateDisplayListDistorter,_patch_update
 	WAIT 50*5
 
 	;rts
@@ -614,10 +681,11 @@ DemoSequence
 
 
 ; A0 - Patch data to use
-PatchSommarhackLogo
+PatchChannelLogo
 	; sommarhack_tiny_logo 448*19 (low rez)    = 224 bytes * 19 lines
 	; tvlogo_scenesat      368*19 (medium rez) =  92 bytes * 19 lines
-	lea sommarhack_tiny_logo+32+224-92-4-8-4,a1
+	;lea sommarhack_tiny_logo+32+224-92-4-8-4,a1
+	lea screen_buffer_bottom+224-92-4-8-4,a1
 	;lea tvlogo_scenesat+8,a0
 	move.w #19-1,d0
 .loop_scanline
@@ -625,6 +693,22 @@ PatchSommarhackLogo
 	move.l (a0)+,(a1)+
 	ENDR
 	lea 224-92(a1),a1
+	dbra d0,.loop_scanline	
+	rts
+
+; A0 - Patch data to use
+PatchBottomLogo
+	; sommarhack_tiny_logo 448*19 (low rez)    = 224 bytes * 19 lines
+	; tvlogo_scenesat      368*19 (medium rez) =  92 bytes * 19 lines
+	;lea sommarhack_tiny_logo+32+224-92-4-8-4,a1
+	lea screen_buffer_bottom+0,a1
+	move.w #19-1,d0
+.loop_scanline
+	REPT 28
+	move.l (a0)+,(a1)+
+	ENDR
+	lea 112(a0),a0
+	lea 224-112(a1),a1
 	dbra d0,.loop_scanline	
 	rts
 
@@ -641,24 +725,6 @@ InitializeEmptyDisplayList
 	move.l d0,(a6)+       ; Line address (4) + pixel shift (1->2)
 	move.l a0,(a6)+       ; Palette pointer (4)
 	dbra d7,.loop	
-
-	jsr UpdateDisplayListWithSommarhack	
-	rts
-
-
-UpdateDisplayListWithSommarhack
-	; Overwrite the bottom with the sommarhack logo (19 scanlines tall)
-	lea DisplayList+(276-19-3)*8,a6        ; Target
-	lea sommarhack_tiny_logo,a0
-	move.l a0,d0
-	add.l #32,d0
-	lsl.l #8,d0               ; Image
-
-	REPT 19
-	move.l d0,(a6)+       ; Line adress (4) + pixel shift (1->2)
-	move.l a0,(a6)+       ; Palette pointer (4)
-	add.l #224<<8,d0
-	ENDR
 	rts
 
 
@@ -666,7 +732,31 @@ UpdateDisplayListWithSommarhack
 ; Various types of contents in a Display List:
 ; - Line adress (4) + pixel shift (1->2)
 ; - Palette pointer (4)
-UpdateDisplayList
+UpdateDisplayListStaticImage
+	move.l displayList_image,a0
+	move.l a0,d0
+	add.l #6400,d0
+	add.w image_offset_x,d0
+	lsl.l #8,d0               ; Image
+
+	; Unrolled generator
+	lea DisplayList,a6        ; Target
+	REPT 200
+	move.l d0,(a6)+       ; Line adress (4) + pixel shift (1->2)
+	move.l a0,(a6)+       ; Palette pointer (4)
+
+	lea 32(a0),a0
+	add.l #160<<8,d0
+	ENDR
+
+	rts
+
+
+; MARK: Distorter
+; Various types of contents in a Display List:
+; - Line adress (4) + pixel shift (1->2)
+; - Palette pointer (4)
+UpdateDisplayListDistorter
 	lea DisplayList,a6        ; Target
 
 	lea sine_255,a5           ; 16 bits, unsigned between 00 and 127
@@ -683,8 +773,6 @@ UpdateDisplayList
 	add.w #4,sine_offset_x
 	and.w #1023,sine_offset_x
 
-	;lea oxygen_multipalette,a0 ; Palette
-	;lea sommarhack_multipalette,a0
 	move.l displayList_image,a0
 	move.l a0,d0
 	add.l #6400,d0
@@ -701,7 +789,6 @@ UpdateDisplayList
 	add.l #160<<8,d0
 	ENDR
 
-	jsr UpdateDisplayListWithSommarhack
 	rts
 	
 
@@ -711,6 +798,9 @@ UpdateDisplayList
 ; 128/2 -> 64
 sine_offset_x	dc.w 0
 sine_offset_y   dc.w 0
+
+image_offset_x  dc.w 0
+;image_offset_y  dc.w 0
 
 
 WaitDelay 
@@ -1064,15 +1154,15 @@ _patch_color_green_white = *+2
 
 		move.b	d7,$ffff8260.w			;3 Left border
 		move.w	d7,$ffff8260.w			;3
-	pause 82-3-1-6
+	pause 60
 	lea (12+30)*8(a3),a3            ; 2 Skip the news ticker section
 	move.l (a3)+,d0                 ; 3 Screen value
 	move.l (a3)+,a4                 ; 3 Palette
 
-_patch_tvlogo = *+2
-	move.l #tvlogo_black+8,a0			; 3
-	move.l a0,d1					; 1
-	lsl.l #8,d1                     ; 6
+	move.l #screen_buffer_bottom,d0 ; 3
+	lsl.l #8,d0                     ; 6
+	lea sommarhack_tiny_logo,a4     ; 3
+	pause 10
 
 		move.w	d7,$ffff820a.w			;3 Right border
 		move.b	d7,$ffff820a.w			;3
@@ -1080,7 +1170,6 @@ _patch_tvlogo = *+2
 	; --------------------------------------------------
 	; Code for scanlines 229-272
 	; --------------------------------------------------
-	REPT 21
     lea $ffff8240.w,a5    			; 2 palette
 	move.l (a4)+,(a5)+              ; 5
 	move.l (a4)+,(a5)+              ; 5
@@ -1100,12 +1189,28 @@ _patch_tvlogo = *+2
 	move.l (a4)+,(a5)+              ; 5
 	move.l (a4)+,(a5)+              ; 5
 
-	move.l (a3)+,d0                 ; 3 Screen value
-	move.l (a3)+,a4                 ; 3 Palette
-
-	pause 33-8
+	pause 31
 	move.b #1,$ffff8260.w   		; 4 Medium resolution
 	pause 17+8
+		;move.w #$700,$ffff8246.w  ; 4 =============
+
+		move.w	d7,$ffff820a.w			;3 Right border
+		move.b	d7,$ffff820a.w			;3
+
+	REPT 20
+	pause 12
+
+	move.b #0,$ffff8260.w   		; 4 Low resolution
+	;movep.l d0,-5(a6)		    	; 6 $ffff8205/07/09/0B
+	;move.b d0,91(a6)				; 3 $ffff8265
+	pause 1+6+3
+
+		move.b	d7,$ffff8260.w			; 3 Left border
+		move.w	d7,$ffff8260.w			; 3
+
+	pause 61
+	move.b #1,$ffff8260.w   		; 4 Medium resolution
+	pause 25
 		;move.w #$700,$ffff8246.w  ; 4 =============
 
 		move.w	d7,$ffff820a.w			;3 Right border
@@ -1117,7 +1222,6 @@ _patch_tvlogo = *+2
 
 _patch_update = *+2
 	jsr DoNothing
-	;jsr UpdateDisplayList
 	;move.w #$000,$ffff8240.w
 
 	; Overscan end
@@ -1439,7 +1543,7 @@ MessageNewsTickerPerfect	dc.b 1
 MessageTickerAccessingWeather	dc.b 1
 								dcb.b 30,127
 								dc.b 1
-								dc.b 1,"<Accessing weather database>"
+								dc.b 1,255,"<Accessing weather database>",255
 								dc.b 0
 
 MessageTickerWeatherDone		dc.b 1
@@ -1460,7 +1564,7 @@ MessageTickerLightModeDone		dc.b 1
 								dc.b 00
 
 MessageNeedTVLogo		  	dc.b 1
-							dc.b 1,126,"I think we need a logo for!"
+							dc.b 1,126,"I think we need a logo for"
 							dc.b 1,126,"the TV channel, like at the"
 							dc.b 1,126,"bottom right?"
 							dc.b 0
@@ -1495,8 +1599,7 @@ MessageDoYouWantToChange	dc.b 1
 							dc.b 0
 
 MessageNaAddLogo			dc.b 1
-							dc.b 1,126,"Nahh, let's just add a logo."
-							dc.b 1
+							dc.b 1,126,"Nahh, keep it for now"
 							dc.b 1,126,"But, maybe change the music?"
 							dc.b 1,126,"I wonder... less well know?"
 							dc.b 1,126,"Something Swedish possible?"
@@ -1512,9 +1615,38 @@ MessagePlayingIWonder    	dc.b 1
 
 MessageAddSommarhackLogo	dc.b 1
 							dc.b 1,126,"I like it, let's continue."
-							dc.b 1
 							dc.b 1,126,"Maybe have a Sommarhack logo?"
 							dc.b 0
+
+MessageSommarhackLogo		dc.b 1
+							dcb.b 30,127
+							dc.b 1
+							dc.b 1,"And a Sommarhack 2025 logo"
+							dc.b 0
+
+MessageNeedSomeEffect    	dc.b 1
+							dc.b 1,126,"Cool!"
+							dc.b 1,126,"I guess now we need an"
+							dc.b 1,126,"actual demo effect..."
+							dc.b 1,126,"Any suggestion?"
+							dc.b 0
+
+MessageThinking				dc.b 1
+							dcb.b 30,127
+							dc.b 1
+							dc.b 1,255,"<Thinking>",255
+							dc.b 0
+
+MessageSommarhackImage		dc.b 1
+							dcb.b 30,127
+							dc.b 1
+							dc.b 1,"I fetched this image from "
+							dc.b 1,"https://sommarhack.se/2025/"
+							dc.b 1
+							dc.b 1,"Do you like it?"
+							dc.b 0
+
+
 
 	even
 
@@ -1585,10 +1717,6 @@ sine_255				; 16 bits, unsigned between 00 and 127
 	incbin "data\sine_255.bin"
 	incbin "data\sine_255.bin"
 	incbin "data\sine_255.bin"
-
-
-Music
-	incbin "data\SOS.SND"
 
  even
 
@@ -1666,6 +1794,9 @@ flag_vbl	 			ds.b 1	; Set to true at the end of the main screen handling interup
 black_palette			ds.w 16     ; These two should stay black
 blank_scanline          ds.w 224    ; Probably more like 224 bytes, but does not care
 screen_buffer			ds.b 160*276+256
+
+screen_buffer_bottom    ds.b 224*21  ; The 21 last lines
+						ds.b 224*10  ; Security crap (in case for some reason we see more of the content)
 
 	even
 
