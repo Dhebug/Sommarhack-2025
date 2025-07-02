@@ -591,6 +591,14 @@ DemoSequence
 
 		WAIT 50*3
 		PRINT_USER_MESSAGE MessageNeedSomeEffect 	; Need some effect
+
+		WAIT 50*2
+		PRINT_AI_MESSAGE MessageThinking 			; Thinking
+
+		WAIT 50*5
+		PRINT_AI_MESSAGE MessageSommarhackImage 	; Start by the sommarhack image
+
+		WAIT 50*2
 	else
 		PLAY_MUSIC music_i_wonder,1          			; Play "I wonder" - XiA
 		SET_NEWS_TITLE news_title_now_playing
@@ -598,20 +606,27 @@ DemoSequence
 		SET_BOTTOM_LOGO sommarhack_tiny_logo          ; Display the Sommarhack logo
 	endc
 
-	WAIT 50*2
-	PRINT_AI_MESSAGE MessageThinking 			; Thinking
-
-	WAIT 50*5
-	PRINT_AI_MESSAGE MessageSommarhackImage 	; Start by the sommarhack image
-
-	WAIT 50*2
-
 	; Enable the main distorter event
 	WAIT_VBL
-	move.w #0,image_offset_x
+	move.w #100,image_offset_x
 	move.l #sommarhack_multipalette,displayList_image
 	move.l #UpdateDisplayListStaticImage,_patch_update
 	WAIT 50*5
+
+.move_loop
+	move.w #150,d0
+.move_left
+	WAIT_VBL
+	add.w #1,image_offset_x
+	dbra d0,.move_left
+
+	move.w #150,d0
+.move_right
+	WAIT_VBL
+	sub.w #1,image_offset_x
+	dbra d0,.move_right
+
+	bra .move_loop
 
 	move.w #8,image_offset_x
 	WAIT 50*5
@@ -736,8 +751,19 @@ UpdateDisplayListStaticImage
 	move.l displayList_image,a0
 	move.l a0,d0
 	add.l #6400,d0
-	add.w image_offset_x,d0
 	lsl.l #8,d0               ; Image
+
+	moveq #0,d1
+	moveq #0,d6
+	move.w image_offset_x,d6
+	lsr.w #2,d6
+	move.b d6,d1
+	and.b #15,d1
+	lsr.w #4,d6
+	lsl.w #8,d6
+	lsl.w #3,d6
+	add.l d6,d0
+	move.b d1,d0
 
 	; Unrolled generator
 	lea DisplayList,a6        ; Target
