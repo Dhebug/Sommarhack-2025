@@ -3,8 +3,8 @@
 
                         ----( VibeCoding )----
               A "Mixed Resolution" demo competition entry
-                              by Defence Force
-                             at Sommarhack 2025
+                           by Defence Force
+                          at Sommarhack 2025
 ```
 
 Credits:
@@ -46,16 +46,16 @@ Results:
 ========
 Ranked 3rd place, here are the full results:
 
-#1 Double Rez Trouble - Dead Hackers Society
-#2 A Letter To Sommarhack - Effect
-#3 VibeCoding - Defence Force
+- #1 Double Rez Trouble - Dead Hackers Society
+- #2 A Letter To Sommarhack - Effect
+- #3 VibeCoding - Defence Force
 
 
 Misc links:
 ===========
-DemoZoo: https://demozoo.org/productions/374458/
-Pouet.net: https://www.pouet.net/prod.php?which=104418
-Video: https://www.youtube.com/watch?v=ePhfz3L7GmA
+- DemoZoo: https://demozoo.org/productions/374458/
+- Pouet.net: https://www.pouet.net/prod.php?which=104418
+- Video: https://www.youtube.com/watch?v=ePhfz3L7GmA
 
 
 Source code:
@@ -65,8 +65,5 @@ I did not prettify anything, it's pretty much what you got, the result of just h
 
 Contact:
 ========
-Defence Force HQ:
-- http://www.defence-force.org
-
-Dbug:  
-- dbug@defence-force.org
+- Defence Force HQ: http://www.defence-force.org  
+- Dbug: dbug@defence-force.org  
