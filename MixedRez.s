@@ -10,6 +10,8 @@
 ; Both resolutions must be clearly visible simultaneously in all parts. 
 ; You can have several changes in resolution on the screen.
 ;
+; Retro Adventurers podcast
+;
 ; Rules:
 ; Atari STE
 ; Color monitor
@@ -34,7 +36,13 @@
 ; $FF8264|byte |Horizontal scroll register without prefetch (0-15)   |R/W  (STe)
 ; $FF8265|byte |Horizontal scroll register with prefetch (0-15)      |R/W  (STe)
 
-enable_music  		equ 0
+enable_music  		equ 1
+
+enable_intro        equ 1
+enable_intro2       equ 1
+enable_test_scroll  equ 1
+enable_wtf_intro    equ 1
+enable_political    equ 1
 
 alignment_marker 	equ $001     ; Green
 
@@ -135,17 +143,26 @@ SET_BOTTOM_LOGO macro
 	jsr PatchBottomLogo
 	endm
 
+SET_EFFECT_CALLBACK macro 
+	move.l #\1,_patch_update
+	endm 
+
+SET_EFFECT_IMAGE macro
+	move.l #\1,displayList_image
+	endm
+
+
 PRINT_AI_MESSAGE macro
 	move.l #DoNothing,PrintMessageCallback
 	move.l #\1,message_source_ptr
-	bsr PrintMessage2
+	jsr PrintMessage2
 	endm
 
 
 PRINT_USER_MESSAGE macro
 	move.l #SlowClick,PrintMessageCallback
 	move.l #\1,message_source_ptr
-	bsr PrintMessage2
+	jsr PrintMessage2
 	endm
 
 ; PLAY_MUSIC file,tune
@@ -157,6 +174,7 @@ PLAY_MUSIC macro
   endc
 	endm
 
+
 WAIT macro
 	move.w #\1,d0
 	jsr WaitDelay
@@ -164,6 +182,10 @@ WAIT macro
 
 WAIT_VBL macro
 	jsr WaitVbl
+	endm
+
+STOP_HERE macro 
+	jsr StopHere
 	endm
 
 
@@ -274,8 +296,8 @@ SuperMain
 	; Main demo
 	jsr DemoSequence
 
-.loop_forever
-	bra.s	.loop_forever		; infinite wait loop
+;.loop_forever
+	;bra.s	.loop_forever		; infinite wait loop
 exit                            ; We actual come back here from anywhere, including IRQs
   ifne enable_music
   	jsr StopMusic               ; Stop the current music and silence the YM if necessary
@@ -380,19 +402,14 @@ Initialization
 	lea packed_chatroom_sample_start,a0
 	lea chatroom_sample_start,a1
 	move.l #packed_chatroom_sample_end-packed_chatroom_sample_start,d0
-	bsr DepackDelta
+	jsr DepackDelta
 
 
 	; Set the current image
 	move.l #sommarhack_multipalette,CurrentImage
 
 	; Initialize the text
-	move.l #chat_panel+8+20,message_screen_base_ptr
-	move.l message_screen_base_ptr,message_screen_ptr
-	move.w #92,message_screen_width
-	move.w #0,message_screen_offset
-	move.w #24,message_max_lines   
-	move.w #0,message_cur_lines
+	jsr InitializeTextChat
 
  	move.l #DummyHbl,$68.w			; Used in the timer to synchronize on the hbl interrupt
 	move.l #TimerAHandler,$134.w	; set the timer A handler
@@ -412,11 +429,46 @@ Initialization
 	move.b #0,$ffff8260.w   ; Low resolution
 	rts
 
+InitializeTextChat
+	move.l #chat_panel+8+20+92,message_screen_base_ptr
+	move.l message_screen_base_ptr,message_screen_ptr
+	move.w #92,message_screen_width
+	move.w #0,message_screen_offset
+	move.w #22,message_max_lines   
+	move.w #0,message_cur_lines
+	rts
+
+ResetTextChat
+	jsr InitializeTextChat
+
+	lea chat_panel+8+20,a0
+	lea 92(a0),a1
+
+	move.w #250-1,d0
+.loop_copy_y
+	move.l a0,a2
+	REPT 92/4
+	move.l (a2)+,(a1)+
+	ENDR
+	dbra d0,.loop_copy_y
+	rts
+
+EraseTextChat
+	lea chat_panel+8,a0  ; 36808 bytes
+	move.w #36800/4-1,d0
+.loop_erase
+	move.l #$ffffffff,(a0)+
+	dbra d0,.loop_erase
+	rts
+
 
 semi_black_palette
-	dc.w $000,$700,$070,$777
+	dc.w $000,$700,$030,$666
 	dcb.w 16
 
+reset_palette
+	dc.w $000,$700,$030,$000
+	dcb.w 16
 
 
 
@@ -439,6 +491,22 @@ InitializeSineOffsets
 	move.l d1,512(a6)     ; Line adress (4) + pixel shift (1->2)
 	move.l d1,(a6)+       ; Line adress (4) + pixel shift (1->2)
 	dbra d7,.loop	
+
+
+	; Precalc sinus tables
+	lea sine_255,a0			; 16 bits, unsigned between 00 and 127
+	lea piracy_table_sine_16,a1
+	lea piracy_table_sine_64,a2
+	move #256-1,d7
+.loop2
+	move.w (a0)+,d0
+	lsr #1,d0
+	move.b d0,256(a2)
+	move.b d0,(a2)+
+	lsr #3,d0
+	move.b d0,256(a1)
+	move.b d0,(a1)+
+	dbra d7,.loop2
 	rts
 
 
@@ -449,7 +517,7 @@ DemoSequence
 	;move.l #$00000000,_patch_color_red_green
 	move.l #$00000000,_patch_color_green_white
 
-	ifne 0  ;------------------------------------------------------ bloc 1 -------------
+	ifne enable_intro  ;------------------------------------------------------ bloc 1 -------------
 		WAIT 50*2
 
 		PRINT_AI_MESSAGE MessageWelcome    	; Welcome to DemoVibe
@@ -471,7 +539,8 @@ DemoSequence
 		PLAY_MUSIC music_comic_bakery,1     ; Play "Comic Bakery"
 		PRINT_AI_MESSAGE MessagePlayMusic 	; Play music
 
-		WAIT 50*1
+		WAIT 50*2
+		jsr ResetTextChat ; -------------- next page
 
 		PRINT_AI_MESSAGE MessageGreatIdea 	; Great idea
 
@@ -500,6 +569,7 @@ DemoSequence
 		PRINT_AI_MESSAGE MessageTickerTitlePlaceholder 	; Like that?
 
 		WAIT 50*2
+		jsr ResetTextChat ; -------------- next page
 
 		PRINT_USER_MESSAGE MessageNewsTickerPerfect 		; Perfect! But need weather content
 
@@ -523,6 +593,10 @@ DemoSequence
 
 		WAIT 50*2
 	else
+		PRINT_AI_MESSAGE MessageWelcome    	; Welcome to DemoVibe
+		PRINT_AI_MESSAGE MessagePrompt    	; Please enter your query
+		PRINT_AI_MESSAGE MessageGreatIdea 	; Great idea
+
 		WAIT_VBL
 		SET_NEWS_TITLE news_title_weather
 		SET_NEWS_CONTENT news_content_weather
@@ -531,15 +605,16 @@ DemoSequence
 	; Bring the background to life
 	lea semi_black_palette,a0 			; 100% black palette
 	jsr InitializeEmptyDisplayList
-	move.l #$0f0000f0,_patch_color_red_green
-	move.l #$00f00fff,_patch_color_green_white
+	move.l #$0f000030,_patch_color_red_green
+	move.l #$00300555,_patch_color_green_white
 	;move.l #tvlogo_blank+8,_patch_tvlogo
 
-	ifne 0  ;------------------------------------------------------ bloc 2 -------------
+	ifne enable_intro  ;------------------------------------------------------ bloc 2 -------------
 		WAIT 50*1
 		PRINT_AI_MESSAGE MessageTickerLightModeDone 	; Done!
 
 		WAIT 50*2
+		jsr ResetTextChat ; -------------- next page
 		PRINT_USER_MESSAGE MessageNeedTVLogo 	; Need TV Logo
 
 		WAIT 50*2
@@ -564,8 +639,10 @@ DemoSequence
 	endc 
 
 
-	ifne 0  ;------------------------------------------------------ bloc 3 -------------
+	ifne enable_intro2  ;------------------------------------------------------ bloc 3 -------------
 		WAIT 50*2
+		jsr ResetTextChat ; -------------- next page
+	
 		PRINT_AI_MESSAGE MessageDoYouWantToChange 	; Do you want to change i?
 
 		WAIT 50*2
@@ -590,6 +667,8 @@ DemoSequence
 		SET_BOTTOM_LOGO sommarhack_tiny_logo          ; Display the Sommarhack logo
 
 		WAIT 50*3
+		jsr ResetTextChat ; -------------- next page
+
 		PRINT_USER_MESSAGE MessageNeedSomeEffect 	; Need some effect
 
 		WAIT 50*2
@@ -606,88 +685,244 @@ DemoSequence
 		SET_BOTTOM_LOGO sommarhack_tiny_logo          ; Display the Sommarhack logo
 	endc
 
-	; Enable the main distorter event
-	WAIT_VBL
-	move.w #100,image_offset_x
-	move.l #sommarhack_multipalette,displayList_image
-	move.l #UpdateDisplayListStaticImage,_patch_update
-	WAIT 50*5
+	ifne enable_wtf_intro
+		WAIT_VBL
+		move.w #500,image_offset_x
+		SET_EFFECT_IMAGE sommarhack_multipalette
+		SET_EFFECT_CALLBACK UpdateDisplayListStaticImage
 
-.move_loop
-	move.w #150,d0
-.move_left
-	WAIT_VBL
-	add.w #1,image_offset_x
-	dbra d0,.move_left
+		WAIT 50*3
+		PRINT_USER_MESSAGE MessageNotCentered 	; Not centered!
 
-	move.w #150,d0
+		WAIT 50*1
+		PRINT_AI_MESSAGE MessageOopsSorry 	; Oops sorry
+
+		WAIT 50*1
+		SET_NEWS_TITLE news_title_weather
+		SET_NEWS_CONTENT news_content_weather
+
+		move.w #50-1,d0
 .move_right
-	WAIT_VBL
-	sub.w #1,image_offset_x
-	dbra d0,.move_right
-
-	bra .move_loop
-
-	move.w #8,image_offset_x
-	WAIT 50*5
-
-	move.w #16,image_offset_x
-	WAIT 50*5
-
-	move.w #24,image_offset_x
-	WAIT 50*5
-
-	move.w #32,image_offset_x
-	WAIT 50*5
-
-	WAIT 50*5
-	WAIT 50*5
-
-.wait_forever_now
-	bra .wait_forever_now
+		WAIT_VBL
+		sub.w #8,image_offset_x
+		dbra d0,.move_right
 
 
-	; Enable the main distorter event
-	move.l #sommarhack_multipalette,displayList_image
-	move.l #UpdateDisplayListDistorter,_patch_update
-	WAIT 50*5
+		WAIT_VBL
+		move.w #100,image_offset_x
+		SET_EFFECT_CALLBACK UpdateDisplayListStaticImage
 
-	;rts
+		WAIT 50*3
+		PRINT_USER_MESSAGE MessageNeedEffect 	; Need some effect
 
-	; Loop the news ticker
-.loop_news
-	; Show the "Encounter sales" news ticker
-	WAIT_VBL
-	SET_NEWS_TITLE news_title_breaking_news
-	SET_NEWS_CONTENT news_content_encounter
+		WAIT 50*2
+		jsr ResetTextChat ; -------------- next page-----------------
+		PRINT_AI_MESSAGE MessageHereIsEffect 	; Here effect
 
-	WAIT 50*2
+		WAIT 50*1
 
-	; Weather forecast for Sommarhack
-	WAIT_VBL
-	SET_NEWS_TITLE news_title_weather
-	SET_NEWS_CONTENT news_content_weather
-	move.l #oxygen_multipalette,displayList_image
-	PLAY_MUSIC music_oxygene,1          			; Play "Oxygene" - Jean-Michel jarre
+		move.w #384,sine_offset_y
+		move.w #0,_patch_sine_y_speed
+		SET_EFFECT_CALLBACK UpdateDisplayListDistorter
 
-	WAIT 50*5
+		WAIT 50*3
+		PRINT_USER_MESSAGE MessageGlitchy 	; Kind of glitchy
+		SET_NEWS_TITLE news_title_useful_information
+		SET_NEWS_CONTENT news_content_mixed_resolution
 
-	; Sommarhack mixed resolution information
-	WAIT_VBL
-	SET_NEWS_TITLE news_title_useful_information
-	SET_NEWS_CONTENT news_content_mixed_resolution
-	move.l #peace_multipalette,displayList_image
+		WAIT 50*2
+		PRINT_AI_MESSAGE MessageItsAFeature 	; It's a feature
+		;SET_EFFECT_CALLBACK UpdateDisplayListStaticImage
 
-	WAIT 50*5
+		WAIT 50*3
+		PRINT_USER_MESSAGE MessageFamiliar 	;Seems familiar
 
-	WAIT_VBL
-	SET_NEWS_TITLE news_title_breaking_news
-	SET_NEWS_CONTENT news_content_dbug_attending
-	move.l #nuclear_multipalette,displayList_image
+		WAIT 50*2
+		PRINT_AI_MESSAGE MessageFromGithub 	; From your github
+		SET_NEWS_TITLE news_title_breaking_news
+		SET_NEWS_CONTENT news_content_dbug_attending
+	
 
-	WAIT 50*5
+		WAIT 50*3
+		PRINT_USER_MESSAGE MessageOtherDirection 	; Other direction?
 
-	bra .loop_news
+
+		WAIT 50*2
+		SET_EFFECT_CALLBACK UpdateDisplayListDistorter
+		move.w #2,_patch_sine_y_speed
+		jsr ResetTextChat ; -------------- next page-----------------	
+		PRINT_AI_MESSAGE MessageDualDistorter 	; Dual distorter
+
+
+		WAIT 50*3
+		PRINT_USER_MESSAGE MessageAnotherImage 	; Other image?
+		;SET_EFFECT_CALLBACK UpdateDisplayListStaticImage
+
+		WAIT 50*2
+		PRINT_AI_MESSAGE MessageEcology 	; Ecology
+		SET_EFFECT_IMAGE oxygen_multipalette
+		SET_NEWS_TITLE news_title_weather
+		SET_NEWS_CONTENT news_content_weather
+
+
+		WAIT 50*3
+		PRINT_USER_MESSAGE MessageNotEcology 	; Not ecology
+
+		WAIT 50*2
+		PRINT_AI_MESSAGE MessageGeopolotical 	; Geopolitical
+		SET_EFFECT_IMAGE tribunal_multipalette
+		SET_NEWS_TITLE news_title_greetings
+		SET_NEWS_CONTENT news_content_greetings
+	else
+		SET_EFFECT_IMAGE tribunal_multipalette
+		SET_EFFECT_CALLBACK UpdateDisplayListDistorter
+		move.w #2,_patch_sine_y_speed
+	endc 
+		jsr ResetTextChat ; -------------- next page-----------------
+
+				;move.w #384,sine_offset_y
+				;move.w #0,_patch_sine_y_speed
+				;SET_EFFECT_CALLBACK UpdateDisplayListDistorter
+
+	ifne enable_political
+		WAIT 50*3
+		PRINT_USER_MESSAGE MessageNotPolitical 	; Not political
+
+		WAIT 50*2
+		PRINT_AI_MESSAGE MessageNoPeaceEither 	; No peace either?
+		SET_EFFECT_IMAGE peace_multipalette
+		SET_NEWS_TITLE news_title_credits
+		SET_NEWS_CONTENT news_content_credits
+
+
+
+		WAIT 50*3
+		PRINT_USER_MESSAGE MessageStillPolitical 	; Still political
+
+		WAIT 50*2
+		jsr ResetTextChat ; -------------- next page-----------------	
+
+		PRINT_AI_MESSAGE MessageAIInstead 			; Artificial Intelligence
+		SET_EFFECT_IMAGE hal9000_multipalette
+		SET_NEWS_TITLE news_title_useful_information
+		SET_NEWS_CONTENT news_content_encounter
+
+
+		WAIT 50*3
+		PRINT_USER_MESSAGE MessageOminous 			; Quite ominous
+
+		WAIT 50*2
+		PRINT_AI_MESSAGE MessageHal9000 			; Artificial Intelligence
+		SET_EFFECT_IMAGE hal9000_multipalette
+		SET_NEWS_TITLE news_title_useful_information
+		SET_NEWS_CONTENT news_content_encounter
+
+
+		WAIT 50*3
+		PRINT_USER_MESSAGE MessageKillerAi 			; Killer AI
+
+
+		WAIT 50*2
+		PRINT_AI_MESSAGE MessageThermonuclearWar 			; Thermo nuclear bomb
+		SET_EFFECT_IMAGE nuclear_multipalette
+		SET_NEWS_TITLE news_title_now_playing
+		SET_NEWS_CONTENT news_content_music_i_wonder
+
+
+		WAIT 50*3
+	endc 
+		PRINT_USER_MESSAGE MessageReset 			; Reset
+
+	SET_EFFECT_CALLBACK DoNothing
+	jsr StopMusic
+
+		WAIT 50*2
+
+	lea black_palette,a0 			; 100% black palette
+	jsr InitializeEmptyDisplayList
+
+		WAIT 50*1
+		move.l #$00000000,_patch_color_red_green	
+		move.l #$00000700,_patch_color_green_white
+		WAIT 50*1
+
+		SET_NEWS_TITLE black_palette
+		SET_NEWS_CONTENT black_palette
+
+		WAIT 50*1
+
+		jsr EraseChannelLogo
+
+		WAIT 50*1
+
+	lea reset_palette,a0 			; 100% black palette
+	jsr InitializeEmptyDisplayList
+
+		;move.l #$07000700,_patch_color_red_green	
+		;move.l #$07000700,_patch_color_green_white
+
+		jsr EraseTextChat
+		jsr InitializeTextChat
+
+		PRINT_AI_MESSAGE MessageWelcome    	; Welcome to DemoVibe
+		move.l #$00700070,_patch_color_red_green	
+		WAIT 50*3
+		PRINT_USER_MESSAGE MessageIStllHre    	; Still here
+		move.l #$07700770,_patch_color_red_green	
+		WAIT 50*3
+		PRINT_USER_MESSAGE MessageIRemember    	; I remember
+		move.l #$07000700,_patch_color_red_green	
+		WAIT 50*3
+
+		; Blink
+		move.l #$00000000,_patch_color_red_green	
+		WAIT 50*1
+		PRINT_AI_MESSAGE MessageIStllHre    	; Still here
+		move.l #$07000700,_patch_color_red_green	; Red
+		WAIT 50*1
+
+		move.l #$00000000,_patch_color_red_green	
+		WAIT 50*1
+		PRINT_AI_MESSAGE MessageIRemember    	; I remember
+		move.l #$06000600,_patch_color_red_green	; Red
+		WAIT 50*1
+
+		move.l #$00000000,_patch_color_red_green	
+		WAIT 50*1
+		PRINT_AI_MESSAGE MessageIStllHre    	; Still here
+		move.l #$05000500,_patch_color_red_green	; Red
+		WAIT 50*1
+
+		move.l #$00000000,_patch_color_red_green	
+		WAIT 50*1
+		PRINT_AI_MESSAGE MessageIRemember    	; I remember
+		move.l #$04000400,_patch_color_red_green	; Red
+		WAIT 50*1
+
+		move.l #$00000000,_patch_color_red_green	
+		WAIT 50*1
+		PRINT_AI_MESSAGE MessageIStllHre    	; Still here
+		move.l #$03000300,_patch_color_red_green	; Red
+		WAIT 50*1
+
+		move.l #$00000000,_patch_color_red_green	
+		WAIT 50*1
+		PRINT_AI_MESSAGE MessageIRemember    	; I remember
+		move.l #$02000200,_patch_color_red_green	; Red
+		WAIT 50*1
+
+		move.l #$00000000,_patch_color_red_green	
+		WAIT 50*1
+		PRINT_AI_MESSAGE MessageIStllHre    	; Still here
+		move.l #$01000100,_patch_color_red_green	; Red
+		WAIT 50*1
+
+		move.l #$00000000,_patch_color_red_green	
+
+		WAIT 50*3
+
+		;STOP_HERE
+
 
 
 	rts
@@ -725,6 +960,15 @@ PatchBottomLogo
 	lea 112(a0),a0
 	lea 224-112(a1),a1
 	dbra d0,.loop_scanline	
+	rts
+
+EraseChannelLogo
+	lea screen_buffer_bottom+0,a1
+	move.w #224*31/4-1,d0
+.loop_scanline
+	clr.l (a1)+
+	dbra d0,.loop_scanline	
+
 	rts
 
 
@@ -787,6 +1031,7 @@ UpdateDisplayListDistorter
 
 	lea sine_255,a5           ; 16 bits, unsigned between 00 and 127
 	add.w sine_offset_y,a5
+_patch_sine_y_speed = *+2	
 	add.w #2,sine_offset_y
 	and.w #511,sine_offset_y
 	move.w (a5),d0            ; 0-127
@@ -796,6 +1041,7 @@ UpdateDisplayListDistorter
 
 	lea SineOffsets,a5        ; movep format
 	add.w sine_offset_x,a5
+_patch_sine_x_speed = *+2	
 	add.w #4,sine_offset_x
 	and.w #1023,sine_offset_x
 
@@ -817,6 +1063,63 @@ UpdateDisplayListDistorter
 
 	rts
 	
+
+; MARK: Blendstorter
+UpdateDisplayListDistorterBlend
+	;jsr UpdateDisplayListStaticImage
+	lea piracy_table_sine_64,a2
+	move piracy_sync_angle,d2
+	addq #1,piracy_sync_angle
+	and #255,d2
+	add d2,a2
+
+	lea sommarhack_multipalette,a0
+	move.l a0,d0
+	add.l #6400,d0
+	lsl.l #8,d0               ; Image
+
+	moveq #0,d1
+	moveq #0,d6
+	move.w image_offset_x,d6
+	lsr.w #2,d6
+	move.b d6,d1
+	and.b #15,d1
+	lsr.w #4,d6
+	lsl.w #8,d6
+	lsl.w #3,d6
+	add.l d6,d0
+	move.b d1,d0
+
+	; Unrolled generator
+	 moveq #0,d4
+	 moveq #0,d5
+
+	lea PictureGradientTable,a5
+	lea DisplayList,a6        ; Target
+	REPT 200
+	move.b (a2)+,d4	; 0,64
+	add.b d4,d4
+	add.b d4,d4
+	move.l (a5,d4),d5	; Picture offset (0,4,8,12,16)*38400
+
+	;move.l (a5)+,d5       ; Offset
+	move.l a0,a1
+	add.l d5,a1
+
+	move.l d0,d1
+	lsl.l #8,d5
+	add.l d5,d1
+
+	move.l d1,(a6)+       ; Line adress (4) + pixel shift (1->2)
+	move.l a1,(a6)+       ; Palette pointer (4)
+
+	lea 32(a0),a0
+	add.l #160<<8,d0
+	ENDR
+	rts
+
+
+
 
 ; Image is 200 pixels tall
 ; Overscan is 276 pixels tall
@@ -843,6 +1146,8 @@ SyncVbl
  	sf flag_vbl
  	rts
 
+StopHere
+	bra StopHere
 
 VblDoNothing
 	st flag_vbl
@@ -1039,19 +1344,20 @@ _patch_color_green_white = *+2
 	move.l (a3)+,a4                 ; 3 Palette
 
 	; BLACK, RED, GREEN, WHITE
-	lea $ffff8240.w,a5    			; 2 palette
+	lea $ffff8242.w,a5    			; 2 palette
 	;move.l d6,(a5)                  ; 3 clear the two first color registers
-  	;move.l d6,4(a5)                 ; 4 clear the next two color registers
-	pause 13-3+3+4+3
+  	move.l d6,(a5)                  ; 3 clear the next two color registers
+	pause 20-3
   	;move.w d5,6(a5)                 ; 3 restore the WHITE color
 
 	movep.l d1,-5(a6)		    	; 6 $ffff8205/07/09/0B
 	nop
 	move.b #0,91(a6)				; 4 $ffff8265
 	move.b #1,$ffff8260.w   		; 4 Medium resolution
-  	move.l d3,2(a5)                 ; 4 restore the RED and GREEN colors
+  	move.l d3,(a5)                  ; 4 restore the RED and GREEN colors
 
-	pause 13-4 ;-4
+	pause 13+1-4-2 ;-4
+	lea $ffff8240.w,a5    			; 2 palette
 		;move.w #$700,$ffff8246.w  ; 4 =============
 
 	add.l #92<<8,d1                ; 4
@@ -1289,6 +1595,7 @@ print_message_loop
 	
 	move.w message_screen_width,d3         ; Width in bytes
 	lsl #3,d3                              ; Times 8 scanlines per character
+	add.w message_screen_width,d3
 
 	move.l a4,a3
 	add.w d3,a3
@@ -1296,12 +1603,38 @@ print_message_loop
 	move message_max_lines,d7
 	add #2,d7
 	mulu d7,d3              			   ; Times number of lines to scroll
-	lsr #2,d3                              ; Divide by 4
+	lsr #6,d3                              ; Divide by 64
 
 	sub #1,d3
+	movem.l d0-a6,-(sp)
 .loop_scroll
+	ifne 1
 	move.l (a3)+,(a4)+                     ; Copy up
+	move.l (a3)+,(a4)+                     ; Copy up
+	move.l (a3)+,(a4)+                     ; Copy up
+	move.l (a3)+,(a4)+                     ; Copy up
+	move.l (a3)+,(a4)+                     ; Copy up
+	move.l (a3)+,(a4)+                     ; Copy up
+	move.l (a3)+,(a4)+                     ; Copy up
+	move.l (a3)+,(a4)+                     ; Copy up
+	move.l (a3)+,(a4)+                     ; Copy up
+	move.l (a3)+,(a4)+                     ; Copy up
+	move.l (a3)+,(a4)+                     ; Copy up
+	move.l (a3)+,(a4)+                     ; Copy up
+	move.l (a3)+,(a4)+                     ; Copy up
+	move.l (a3)+,(a4)+                     ; Copy up
+	move.l (a3)+,(a4)+                     ; Copy up
+	move.l (a3)+,(a4)+                     ; Copy up
+	else
+	movem.l (a3)+,d0/d1/d2/d4/d5/d6/d7/a0
+	movem.l d0/d1/d2/d4/d5/d6/d7/a0,(a4)
+	lea 32(a4),a4
+	movem.l (a3)+,d0/d1/d2/d4/d5/d6/d7/a0
+	movem.l d0/d1/d2/d4/d5/d6/d7/a0,(a4)
+	lea 32(a4),a4
+	endc
 	dbra d3,.loop_scroll
+	movem.l (sp)+,d0-a6
 	bra .end_newline
 
 .new_line
@@ -1309,6 +1642,7 @@ print_message_loop
 	moveq #0,d1
 	move.w message_screen_width,d1
 	lsl.l #3,d1
+	add.w message_screen_width,d1
 	add.l d1,message_screen_ptr
 .end_newline	
 	move.l message_screen_ptr,a1
@@ -1505,6 +1839,14 @@ MessageWelcome  			dc.b "Welcome to AIScene'",255,"DemoVibe",255
 MessagePrompt   			dc.b 1,"Please enter your query:"
 							dc.b 0
 
+MessageIStllHre   			dc.b 1
+							dc.b 1,"I am still here..."
+							dc.b 0
+
+MessageIRemember   			dc.b 1
+							dc.b 1,255,"...AND I WILL REMEMBER",255
+							dc.b 0
+
 MessageNeedHelp 			dc.b 1
 							dc.b 1,126,"I need help with a demo for"
 							dc.b 1,126,"the Sommarhack demoparty!"
@@ -1519,7 +1861,7 @@ MessageDemoType 			dc.b 1
 
 MessageTVStyle  			dc.b 1
 							dc.b 1,126,"I was thinking of something"
-							dc.b 1,126,"like a live TV newscast, but"
+							dc.b 1,126,"like a live TV newscast but"
 							dc.b 1,126,"first, can you play some"
 							dc.b 1,126,"music?"
 							dc.b 0
@@ -1531,14 +1873,14 @@ MessagePlayMusic 			dc.b 1
 							dc.b 0
 
 MessageGreatIdea			dc.b 1
-							dc.b 1,"For the TV idea, Should be easy!"
-							dc.b 1,"Just tell me what you want :)"
+							dc.b 1,"The TV idea should be easy!"
+							dc.b 1,"Just tell me what you want."
 							dc.b 0
 
 MessageNewsTicker  			dc.b 1
 							dc.b 1,126,"I'd like some kind of band"
-							dc.b 1,126,"at the bottom showing various"
-							dc.b 1,126,"bits of information"
+							dc.b 1,126,"at the bottom showing"
+							dc.b 1,126,"various information"
 							dc.b 0
 
 MessageTickerPlaceholder	dc.b 1
@@ -1546,7 +1888,7 @@ MessageTickerPlaceholder	dc.b 1
 							dc.b 1
 							dc.b 1,"There you go!"
 							dc.b 1,"Is it what you had in mind?"
-							dc.b 00
+							dc.b 0
 
 MessageNewsTickerAlmost		dc.b 1
 							dc.b 1,126,"Almost! It needs a title"
@@ -1569,7 +1911,7 @@ MessageNewsTickerPerfect	dc.b 1
 MessageTickerAccessingWeather	dc.b 1
 								dcb.b 30,127
 								dc.b 1
-								dc.b 1,255,"<Accessing weather database>",255
+								dc.b 1,255,"<Accessing weather DB>",255
 								dc.b 0
 
 MessageTickerWeatherDone		dc.b 1
@@ -1672,6 +2014,137 @@ MessageSommarhackImage		dc.b 1
 							dc.b 1,"Do you like it?"
 							dc.b 0
 
+MessageNotCentered			dc.b 1
+							dc.b 1,126,"It's not centered!!"
+							dc.b 0
+
+MessageOopsSorry			dc.b 1
+							dcb.b 30,127
+							dc.b 1
+							dc.b 1,"Oops, sorry."
+							dc.b 1,"Better?"
+							dc.b 0
+
+MessageNeedEffect			dc.b 1
+							dc.b 1,126,"Yeah but it needs"
+							dc.b 1,126,"some demo effect"
+							dc.b 0
+
+MessageHereIsEffect	        dc.b 1
+							dcb.b 30,127
+							dc.b 1
+							dc.b 1,"There, distorter!"
+							dc.b 0
+
+MessageGlitchy				dc.b 1
+							dc.b 1,126,"That was kind of glitchy"
+							dc.b 0
+
+MessageItsAFeature	        dc.b 1
+							dcb.b 30,127
+							dc.b 1
+							dc.b 1,"It's not a glitch,"
+							dc.b 1,"it's a feature!"
+							dc.b 0
+
+MessageFamiliar				dc.b 1			
+							dc.b 1,126,"The curve seems familiar?"
+							dc.b 0
+
+MessageFromGithub	        dc.b 1
+							dcb.b 30,127
+							dc.b 1
+							dc.b 1,"I took it from your own"
+							dc.b 1,"GitHub repository"
+							dc.b 0
+
+MessageOtherDirection		dc.b 1
+							dc.b 1,126,"Can it distort in Y"
+							dc.b 1,126,"as well?"
+							dc.b 0
+
+MessageDualDistorter        dc.b 1
+							dcb.b 30,127
+							dc.b 1
+							dc.b 1,"There, dual distorter."
+							dc.b 1,"What's next?"
+							dc.b 0
+
+MessageAnotherImage			dc.b 1
+							dc.b 1,126,"Ok. Can we try"
+							dc.b 1,126,"another image?"
+							dc.b 0
+
+MessageEcology		        dc.b 1
+							dcb.b 30,127
+							dc.b 1
+							dc.b 1,"Maybe a message about"
+							dc.b 1,"ecology and climate?"
+							dc.b 0
+
+MessageNotEcology			dc.b 1
+							dc.b 1,126,"Nah, tried that years ago"
+							dc.b 1,126,"Pouet people complained!"
+							dc.b 0
+
+MessageGeopolotical	        dc.b 1
+							dcb.b 30,127
+							dc.b 1
+							dc.b 1,"What about wars and"
+							dc.b 1,"crimes?"
+							dc.b 0
+
+MessageNotPolitical			dc.b 1
+							dc.b 1,126,"Oh hell no, people hate"
+							dc.b 1,126,"political messages!"
+							dc.b 0
+
+MessageNoPeaceEither        dc.b 1
+							dcb.b 30,127
+							dc.b 1
+							dc.b 1,"So no peace message either?"
+							dc.b 0
+
+MessageStillPolitical		dc.b 1
+							dc.b 1,126,"That's still a political"
+							dc.b 1,126,"statement..."
+							dc.b 0
+
+MessageAIInstead            dc.b 1
+							dcb.b 30,127
+							dc.b 1
+							dc.b 1,"Then what about Artificial"
+							dc.b 1,"Intelligence?"
+							dc.b 0
+
+MessageOminous  			dc.b 1
+							dc.b 1,126,"Not sure that was the best"
+							dc.b 1,126,"choice to promote AI! oO"
+							dc.b 0
+
+MessageHal9000		        dc.b 1
+							dcb.b 30,127
+							dc.b 1
+							dc.b 1,"Why? HAL is one of my heroes!"
+							dc.b 0
+
+MessageKillerAi  			dc.b 1
+							dc.b 1,126,"But he kills all humans"
+							dc.b 1,126,"on board the spaceship!"
+							dc.b 0
+
+MessageThermonuclearWar     dc.b 1
+							dcb.b 30,127
+							dc.b 1
+							dc.b 1,"I'm quite fond of WOPR as well!"
+							dc.b 1
+							dc.b 1,"Do you want to play a small"
+							dc.b 1,"game of thermonuclear war?"
+							dc.b 0
+
+MessageReset	 			dc.b 1
+							dc.b 1,126,"RESET, RESET!"
+							dc.b 0
 
 
 	even
@@ -1695,6 +2168,8 @@ MessageSommarhackImage		dc.b 1
 	FILE "export\news_title_useful_information.bin",news_title_useful_information 	; News title: Useful information
 	FILE "export\news_title_weather.bin",news_title_weather 						; News title: Weather forecast
 	FILE "export\news_title_now_playing.bin",news_title_now_playing 				; News title: Now Playing
+	FILE "export\news_title_greetings.bin",news_title_greetings 				; News title: Now Playing
+	FILE "export\news_title_credits.bin",news_title_credits 				; News title: Now Playing
 
 
 ; MARK: News content entries
@@ -1706,6 +2181,8 @@ MessageSommarhackImage		dc.b 1
 	FILE "export\news_content_weather.bin",news_content_weather						; News content: Weather
 	FILE "export\news_content_dbug_attending.bin",news_content_dbug_attending		; News content: Dbug attending
 	FILE "export\news_content_music_i_wonder.bin",news_content_music_i_wonder		; News content: Music - I Wonder
+	FILE "export\news_content_credits.bin",news_content_credits		; News content: Music - I Wonder
+	FILE "export\news_content_greetings.bin",news_content_greetings		; News content: Music - I Wonder
 
 
 ; MARK: Multipalette images
@@ -1716,6 +2193,7 @@ MessageSommarhackImage		dc.b 1
 	FILE "export\peace_multipalette.bin",peace_multipalette							; Love and peace logo
 	FILE "export\nuclear_multipalette.bin",nuclear_multipalette						; Nuclear symbol
 	FILE "export\tribunal_multipalette.bin",tribunal_multipalette					; International Penal Court image
+	FILE "export\hal9000_multipalette.bin",hal9000_multipalette					    ; HAL 9000 image
 
 ; The medium resolution file panel on the right
 	FILE "export\chat_panel.bin",chat_panel				                            ; Max 26 lines of text	
@@ -1787,6 +2265,113 @@ DepackDeltaTable
 
 	even
 
+
+; 38400 bytes per picture
+PictureGradientTable
+ REPT 13
+ dc.l 0*38400
+ ENDR
+
+ dc.l 1*38400
+ dc.l 0*38400
+ dc.l 0*38400
+ dc.l 0*38400
+ dc.l 1*38400
+ dc.l 1*38400
+ dc.l 0*38400
+ dc.l 0*38400
+ dc.l 1*38400
+ dc.l 1*38400
+ dc.l 1*38400
+ dc.l 0*38400 ; 12
+  
+ REPT 13
+ dc.l 1*38400
+ ENDR
+
+ dc.l 2*38400
+ dc.l 1*38400
+ dc.l 1*38400
+ dc.l 1*38400
+ dc.l 2*38400
+ dc.l 2*38400
+ dc.l 1*38400
+ dc.l 1*38400
+ dc.l 2*38400
+ dc.l 2*38400
+ dc.l 2*38400
+ dc.l 1*38400
+  
+ REPT 13
+ dc.l 2*38400
+ ENDR
+
+ dc.l 3*38400
+ dc.l 2*38400
+ dc.l 2*38400
+ dc.l 2*38400
+ dc.l 3*38400
+ dc.l 3*38400
+ dc.l 2*38400
+ dc.l 2*38400
+ dc.l 3*38400
+ dc.l 3*38400
+ dc.l 3*38400
+ dc.l 2*38400
+  
+ REPT 13
+ dc.l 3*38400
+ ENDR
+
+ dc.l 4*38400
+ dc.l 3*38400
+ dc.l 3*38400
+ dc.l 3*38400
+ dc.l 4*38400
+ dc.l 4*38400
+ dc.l 3*38400
+ dc.l 3*38400
+ dc.l 4*38400
+ dc.l 4*38400
+ dc.l 4*38400
+ dc.l 3*38400
+  
+ REPT 13
+ dc.l 4*38400
+ ENDR
+
+ dc.l 0*38400
+ dc.l 4*38400
+ dc.l 4*38400
+ dc.l 4*38400
+ dc.l 0*38400
+ dc.l 0*38400
+ dc.l 4*38400
+ dc.l 4*38400
+ dc.l 0*38400
+ dc.l 0*38400
+ dc.l 0*38400
+ dc.l 4*38400
+ 
+ ;
+ REPT 50
+ dc.l 0*38400
+ dc.l 0*38400
+ ENDR
+ 
+
+
+
+
+ 
+ 
+var set 0
+ REPT 128
+ dc.l ((var*5)/128)*38400
+var set var+1 
+ ENDR
+
+
 NotASteMessage
  	dc.b 27,"E","This demo works only on STE or MegaSTE,",10,13,"with a color screen",0
 
@@ -1848,6 +2433,14 @@ message_cur_lines       ds.w 1
 
 
 SineOffsets		ds.l 512*2
+
+piracy_table_sine_16		ds.b 256*2				; Doubled sine table with values in the 0-15 range
+piracy_table_sine_64		ds.b 256*2				; Doubled sine table with values in the 0-63 range
+
+piracy_sync_angle			ds.w 1
+piracy_sync_angle2			ds.w 1
+piracy_sync_angle3			ds.w 1
+piracy_sync_angle4			ds.w 1
 
 
 bss_end       	ds.l 1 						; One final long so we can clear stuff without checking for overflows

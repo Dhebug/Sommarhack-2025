@@ -23,6 +23,7 @@ bin\PictConv.exe -m1 -f1 -o7 -p1 data\oxygen.png export\oxygen_multipalette.bin
 bin\PictConv.exe -m1 -f1 -o7 -p1 data\peace.png export\peace_multipalette.bin
 bin\PictConv.exe -m1 -f1 -o7 -p1 data\nuclear.png export\nuclear_multipalette.bin
 bin\PictConv.exe -m1 -f1 -o7 -p1 data\tribunal.png export\tribunal_multipalette.bin
+bin\PictConv.exe -m1 -f1 -o7 -p1 data\hal9000.png export\hal9000_multipalette.bin
 
 :: News title entries
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_title_placeholder.png export\news_title_placeholder.bin
@@ -30,6 +31,8 @@ bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_title_breaking_news.png export\news_t
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_title_useful_information.png export\news_title_useful_information.bin
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_title_weather.png export\news_title_weather.bin
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_title_now_playing.png export\news_title_now_playing.bin
+bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_title_greetings.png export\news_title_greetings.bin
+bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_title_credits.png export\news_title_credits.bin
 
 :: News content entries
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_content_placeholder.png export\news_content_placeholder.bin
@@ -38,6 +41,8 @@ bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_content_mixed_resolution.png export\n
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_content_weather.png export\news_content_weather.bin
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_content_dbug_attending.png export\news_content_dbug_attending.bin
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_content_music_i_wonder.png export\news_content_music_i_wonder.bin
+bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_content_greetings.png export\news_content_greetings.bin
+bin\PictConv.exe -m1 -f0 -o7 -p1 data\news_content_credits.png export\news_content_credits.bin
 
 bin\PictConv.exe -m1 -f0 -o7 -p1 data\black_ticker.png export\black_ticker.bin
 
