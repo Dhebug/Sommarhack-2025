@@ -2226,7 +2226,7 @@ sine_255				; 16 bits, unsigned between 00 and 127
 
 ; Unpacked:  9536  Packed:    4769
 packed_chatroom_sample_start 
-	incbin "export\keyboard.dlt"
+	incbin "data\keyboard.dlt"
 packed_chatroom_sample_end
 
  even
